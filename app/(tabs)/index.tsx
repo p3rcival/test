@@ -9,6 +9,8 @@ import { Exercise, WorkoutSchedule } from '@/src/types';
 import { supabase } from '@/src/lib/supabase';
 import Toast from 'react-native-toast-message';
 import { useTheme } from '@/src/context/ThemeContext';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
 
 export default function Home() {
   const { isDark } = useTheme();
@@ -16,6 +18,30 @@ export default function Home() {
   const [workoutSchedule, setWorkoutSchedule] = useState<WorkoutSchedule>({});
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      const refreshSession = async () => {
+        const { data: { session }, error } = await supabase.auth.getSession();
+  
+        if (session?.user) {
+          setUser(session.user);
+          loadWorkoutSchedules(); // re-fetch workouts after login or focus
+        } else {
+          setUser(null);
+          setWorkoutSchedule({});
+          setIsLoading(false);
+        }
+  
+        if (error) {
+          console.error('Error fetching session on focus:', error);
+        }
+      };
+  
+      refreshSession();
+    }, [])
+  );
+  
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {

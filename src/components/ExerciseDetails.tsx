@@ -1,8 +1,10 @@
+// components/ExerciseDetails.tsx
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, ScrollView, Platform } from 'react-native';
 import { Exercise } from '../types';
 import { X, Video, FileText, Plus, Trash2, Play } from 'lucide-react-native';
 import { useTheme } from '@/src/context/ThemeContext';
+import { useRouter } from 'expo-router';
 
 interface ExerciseDetailsProps {
   exercise: Exercise;
@@ -10,79 +12,10 @@ interface ExerciseDetailsProps {
   onUpdate: (updatedExercise: Exercise) => void;
 }
 
-function getEmbedUrl(url: string): string | null {
-  try {
-    const videoUrl = new URL(url);
-    
-    // Handle YouTube URLs
-    if (videoUrl.hostname.includes('youtube.com') || videoUrl.hostname.includes('youtu.be')) {
-      let videoId = '';
-      
-      if (videoUrl.hostname.includes('youtube.com')) {
-        videoId = videoUrl.searchParams.get('v') || '';
-      } else if (videoUrl.hostname.includes('youtu.be')) {
-        videoId = videoUrl.pathname.slice(1);
-      }
-      
-      if (videoId) {
-        // Add required parameters for proper embedding
-        const params = new URLSearchParams({
-          enablejsapi: '1',
-          origin: Platform.select({
-            web: window.location.origin,
-            default: 'app://localhost'
-          }),
-          autoplay: '1',
-          modestbranding: '1',
-          rel: '0',
-          showinfo: '0'
-        });
-        return `https://www.youtube-nocookie.com/embed/${videoId}?${params.toString()}`;
-      }
-    }
-    
-    // Handle Vimeo URLs
-    if (videoUrl.hostname.includes('vimeo.com')) {
-      const videoId = videoUrl.pathname.slice(1);
-      if (videoId) {
-        return `https://player.vimeo.com/video/${videoId}?autoplay=1`;
-      }
-    }
-    
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function VideoPlayer({ url }: { url: string }) {
-  if (Platform.OS === 'web') {
-    return (
-      <iframe
-        src={url}
-        style={{
-          width: '100%',
-          height: '100%',
-          border: 'none',
-        }}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen
-        sandbox="allow-same-origin allow-scripts allow-presentation allow-popups allow-popups-to-escape-sandbox allow-forms"
-      />
-    );
-  } else {
-    const WebView = require('react-native-webview').WebView;
-    return (
-      <WebView
-        style={styles.videoPlayer}
-        source={{ uri: url }}
-        allowsFullscreenVideo
-        javaScriptEnabled
-        domStorageEnabled
-        mediaPlaybackRequiresUserAction={false}
-      />
-    );
-  }
+function getYouTubeVideoId(url: string): string | null {
+  const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+  const match = url.match(youtubeRegex);
+  return match ? match[1] : null;
 }
 
 export function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetailsProps) {
@@ -90,7 +23,7 @@ export function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetails
   const [videoUrls, setVideoUrls] = useState<string[]>(exercise.videoUrls || []);
   const [newVideoUrl, setNewVideoUrl] = useState('');
   const [notes, setNotes] = useState(exercise.notes || '');
-  const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
+  const router = useRouter();
 
   const handleAddVideo = () => {
     if (newVideoUrl && !videoUrls.includes(newVideoUrl)) {
@@ -101,9 +34,6 @@ export function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetails
 
   const handleRemoveVideo = (urlToRemove: string) => {
     setVideoUrls(videoUrls.filter(url => url !== urlToRemove));
-    if (selectedVideo === getEmbedUrl(urlToRemove)) {
-      setSelectedVideo(null);
-    }
   };
 
   const handleSubmit = () => {
@@ -115,9 +45,9 @@ export function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetails
   };
 
   const handlePlayVideo = (url: string) => {
-    const embedUrl = getEmbedUrl(url);
-    if (embedUrl) {
-      setSelectedVideo(embedUrl);
+    const videoId = getYouTubeVideoId(url);
+    if (videoId) {
+      router.push(`/video/${videoId}`);
     }
   };
 
@@ -146,18 +76,6 @@ export function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetails
                 {exercise.weight && ` @ ${exercise.weight}kg`}
               </Text>
             </View>
-
-            {selectedVideo && (
-              <View style={styles.videoContainer}>
-                <VideoPlayer url={selectedVideo} />
-                <TouchableOpacity
-                  style={styles.closeVideoButton}
-                  onPress={() => setSelectedVideo(null)}
-                >
-                  <X size={20} color="#FFFFFF" />
-                </TouchableOpacity>
-              </View>
-            )}
 
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
@@ -314,25 +232,6 @@ const styles = StyleSheet.create({
   },
   exerciseDetailsDark: {
     color: '#9CA3AF',
-  },
-  videoContainer: {
-    height: 250,
-    marginBottom: 16,
-    borderRadius: 8,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  videoPlayer: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-  closeVideoButton: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 20,
-    padding: 8,
   },
   section: {
     marginBottom: 24,
