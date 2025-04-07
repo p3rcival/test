@@ -73,8 +73,8 @@ export default ({ config }) => ({
     typedRoutes: true
   },
   extra: {
-    supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
-    supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+    supabaseUrl: "https://uplzwvwxfeuyioozfoof.supabase.co", //process.env.EXPO_PUBLIC_SUPABASE_URL,
+    supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVwbHp3dnd4ZmV1eWlvb3pmb29mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM0NDI1NTQsImV4cCI6MjA1OTAxODU1NH0.x47YR8kuh7KPOg5ZM2RHsEChJF_yVUUj_CcteVm4LGo", //process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
     eas: {
       projectId: "90579566-a075-45f9-a7a6-b8d6d183251c"
     }

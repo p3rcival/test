@@ -4,7 +4,7 @@ import { Calendar } from './components/Calendar';
 import { ExerciseForm } from './components/ExerciseForm';
 import { DaySchedule } from './components/DaySchedule';
 import { Exercise, WorkoutSchedule } from './types';
-import { Dumbbell } from 'lucide-react';
+import { Dumbbell } from 'lucide-react-native';
 import { ThemeToggle } from './components/ThemeToggle';
 import { supabase } from './lib/supabase';
 import { Auth } from './components/Auth';
@@ -78,6 +78,9 @@ function App() {
       return;
     }
 
+    // Log the incoming exercise
+    console.log("New exercise to add:", exercise);
+
     const updatedSchedule = {
       ...workoutSchedule,
       [dateKey]: {
@@ -86,9 +89,10 @@ function App() {
       },
     };
 
+    console.log("Updated schedule:", updatedSchedule);
     setWorkoutSchedule(updatedSchedule);
 
-    const { error } = await supabase
+    const { error, data } = await supabase
       .from('workout_schedules')
       .upsert({
         user_id: user.id,
@@ -98,6 +102,7 @@ function App() {
         onConflict: 'user_id,date'
       });
 
+    console.log("Supabase upsert response:", data);
     if (error) {
       toast.error('Failed to save workout');
       console.error('Error saving workout:', error);

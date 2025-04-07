@@ -5,6 +5,7 @@ import { Plus, Video, FileText, Trash2, Save, List } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import Toast from 'react-native-toast-message';
 import { useTheme } from '@/src/context/ThemeContext';
+import { v4 as uuidv4 } from 'uuid';
 
 interface ExerciseFormProps {
   onAddExercise: (exercise: Exercise) => void;
@@ -87,8 +88,9 @@ export function ExerciseForm({ onAddExercise }: ExerciseFormProps) {
   const handleSubmit = async () => {
     const newExercise = {
       ...exercise,
-      id: crypto.randomUUID(),
+      id: uuidv4(), //id: crypto.randomUUID(),
     };
+    console.log("New exercise object:", newExercise);
     onAddExercise(newExercise);
 
     if (!isFromTemplate && user) {
