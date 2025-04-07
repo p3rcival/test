@@ -8,14 +8,18 @@ import { Dumbbell } from 'lucide-react-native';
 import { ThemeToggle } from './components/ThemeToggle';
 import { supabase } from './lib/supabase';
 import { Auth } from './components/Auth';
-import toast from 'react-hot-toast';
+//import toast from 'react-hot-toast';
+import { User } from '@supabase/supabase-js'; // or wherever your User type is defined
+import { useTheme } from '@/src/context/ThemeContext';
 
 function App() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [workoutSchedule, setWorkoutSchedule] = useState<WorkoutSchedule>({});
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
   const [showAuth, setShowAuth] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  const { isDark } = useTheme();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -51,7 +55,7 @@ function App() {
 
     if (error) {
       console.error('Error loading workout schedules:', error);
-      toast.error('Failed to load workout schedules');
+      //toast.error('Failed to load workout schedules');
       setIsLoading(false);
       return;
     }
@@ -73,7 +77,7 @@ function App() {
 
   const handleAddExercise = async (exercise: Exercise) => {
     if (!user) {
-      toast.error('Please sign in to save workouts');
+      //toast.error('Please sign in to save workouts');
       setShowAuth(true);
       return;
     }
@@ -104,14 +108,14 @@ function App() {
 
     console.log("Supabase upsert response:", data);
     if (error) {
-      toast.error('Failed to save workout');
+      //toast.error('Failed to save workout');
       console.error('Error saving workout:', error);
     }
   };
 
   const handleRemoveExercise = async (exerciseId: string) => {
     if (!user) {
-      toast.error('Please sign in to modify workouts');
+      //toast.error('Please sign in to modify workouts');
       setShowAuth(true);
       return;
     }
@@ -135,7 +139,7 @@ function App() {
         .match({ user_id: user.id, date: dateKey });
 
       if (error) {
-        toast.error('Failed to delete workout');
+        //toast.error('Failed to delete workout');
         console.error('Error deleting workout:', error);
       }
     } else {
@@ -151,7 +155,7 @@ function App() {
         });
 
       if (error) {
-        toast.error('Failed to update workout');
+        //toast.error('Failed to update workout');
         console.error('Error updating workout:', error);
       }
     }
@@ -159,7 +163,7 @@ function App() {
 
   const handleUpdateExercise = async (updatedExercise: Exercise) => {
     if (!user) {
-      toast.error('Please sign in to modify workouts');
+      //toast.error('Please sign in to modify workouts');
       setShowAuth(true);
       return;
     }
@@ -189,7 +193,7 @@ function App() {
       });
 
     if (error) {
-      toast.error('Failed to update workout');
+      //toast.error('Failed to update workout');
       console.error('Error updating workout:', error);
     }
   };
@@ -204,7 +208,11 @@ function App() {
         <div className="max-w-3xl mx-auto py-6 px-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <Dumbbell className="h-8 w-8 text-blue-600 dark:text-blue-400 mr-3" />
+            <Dumbbell 
+              size={32} 
+              color={isDark ? '#93C5FD' : '#2563EB'} 
+              style={{ marginRight: 12 }}
+            />
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Workout Scheduler</h1>
             </div>
             <div className="flex items-center space-x-4">

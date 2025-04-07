@@ -17,8 +17,12 @@
       "@/*": ["./*"],
       "~/*": ["./src/*"]
     },
-    "types": ["expo-router/entry"]
+    "typeRoots": [
+      "./types",
+      "./node_modules/@types"
+    ]
+    // You can remove the "types" field if it was only to include expo-router/entry.
   },
-  "include": ["./app", "./src"],
+  "include": ["./app", "./src", "./types", "./components"],
   "exclude": ["node_modules"]
 }

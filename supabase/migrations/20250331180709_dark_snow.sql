@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS exercise_templates (
   sets integer NOT NULL,
   reps integer NOT NULL,
   weight numeric,
-  video_urls text[],
+  videoUrls text[],
   notes text,
   created_at timestamptz DEFAULT now()
 );

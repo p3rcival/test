@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Keyboard, Alert } from 'react-native';
 import { Exercise } from '../types';
 import { Plus, Video, FileText, Trash2, Save, List } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import Toast from 'react-native-toast-message';
 import { useTheme } from '@/src/context/ThemeContext';
-import { v4 as uuidv4 } from 'uuid';
+import uuid from 'react-native-uuid';
+import { User } from '@supabase/supabase-js'; // or wherever your User type is defined
 
 interface ExerciseFormProps {
   onAddExercise: (exercise: Exercise) => void;
@@ -24,7 +25,7 @@ export function ExerciseForm({ onAddExercise }: ExerciseFormProps) {
   const [newVideoUrl, setNewVideoUrl] = useState('');
   const [templates, setTemplates] = useState<Exercise[]>([]);
   const [showTemplates, setShowTemplates] = useState(false);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isFromTemplate, setIsFromTemplate] = useState(false);
 
   useEffect(() => {
@@ -62,7 +63,7 @@ export function ExerciseForm({ onAddExercise }: ExerciseFormProps) {
 
     const templatesWithVideoUrls = data?.map(template => ({
       ...template,
-      videoUrls: template.video_urls || [],
+      videoUrls: template.videoUrls || [],
     })) || [];
 
     setTemplates(templatesWithVideoUrls);
@@ -86,11 +87,13 @@ export function ExerciseForm({ onAddExercise }: ExerciseFormProps) {
   };
 
   const handleSubmit = async () => {
+    // Dismiss the keyboard so that the button tap isn't swallowed on Android
+    Keyboard.dismiss();
+
     const newExercise = {
       ...exercise,
-      id: uuidv4(), //id: crypto.randomUUID(),
+      id: uuid.v4(),
     };
-    console.log("New exercise object:", newExercise);
     onAddExercise(newExercise);
 
     if (!isFromTemplate && user) {
@@ -134,8 +137,8 @@ export function ExerciseForm({ onAddExercise }: ExerciseFormProps) {
   };
 
   const handleSelectTemplate = (template: Exercise) => {
-    const videoUrls = Array.isArray(template.video_urls) 
-      ? template.video_urls 
+    const videoUrls = Array.isArray(template.videoUrls) 
+      ? template.videoUrls 
       : Array.isArray(template.videoUrls) 
         ? template.videoUrls 
         : [];
@@ -153,32 +156,44 @@ export function ExerciseForm({ onAddExercise }: ExerciseFormProps) {
   };
 
   const handleDeleteTemplate = async (templateId: string) => {
-    if (!window.confirm('Are you sure you want to delete this template?')) {
-      return;
-    }
-
-    const { error } = await supabase
-      .from('exercise_templates')
-      .delete()
-      .eq('id', templateId);
-
-    if (error) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error deleting template',
-      });
-      console.error('Error deleting template:', error);
-    } else {
-      Toast.show({
-        type: 'success',
-        text1: 'Template deleted successfully',
-      });
-      loadTemplates();
-    }
+    Alert.alert(
+      'Delete Template',
+      'Are you sure you want to delete this template?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          onPress: async () => {
+            const { error } = await supabase
+              .from('exercise_templates')
+              .delete()
+              .eq('id', templateId);
+  
+            if (error) {
+              Toast.show({
+                type: 'error',
+                text1: 'Error deleting template',
+              });
+              console.error('Error deleting template:', error);
+            } else {
+              Toast.show({
+                type: 'success',
+                text1: 'Template deleted successfully',
+              });
+              loadTemplates();
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
   };
-
+  
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => setShowTemplates(!showTemplates)}
