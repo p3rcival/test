@@ -4,26 +4,24 @@
  * Converts a YouTube URL (either short form or standard) to an embed URL.
  * This ensures the video can be played properly in a WebView.
  */
-export function convertYoutubeUrlToEmbed(url: string): string {
-    // Check for short YouTube URL (e.g. https://youtu.be/VIDEO_ID?params)
-    const shortUrlRegex = /^https?:\/\/youtu\.be\/([^?]+)(\?.*)?$/;
-    let match = url.match(shortUrlRegex);
+export default function convertYoutubeUrl(url: string): string {
+    // Check if the URL is a short YouTube link
+    const shortUrlRegex = /^https?:\/\/youtu\.be\/([^?]+)/;
+    const match = url.match(shortUrlRegex);
     if (match && match[1]) {
       const videoId = match[1];
-      const queryString = match[2] || "";
-      return `https://www.youtube.com/embed/${videoId}${queryString}`;
+      // Return the embed URL
+      return `https://www.youtube.com/embed/${videoId}`;
     }
-    
-    // Check for standard watch URL (e.g. https://www.youtube.com/watch?v=VIDEO_ID&params)
-    const watchUrlRegex = /^https?:\/\/www\.youtube\.com\/watch\?v=([^&]+)(.*)$/;
-    match = url.match(watchUrlRegex);
-    if (match && match[1]) {
-      const videoId = match[1];
-      const queryString = match[2] || "";
-      return `https://www.youtube.com/embed/${videoId}${queryString}`;
+    // If it's already a standard URL, try converting it
+    const standardUrlRegex = /^https?:\/\/www\.youtube\.com\/watch\?v=([^&]+)/;
+    const standardMatch = url.match(standardUrlRegex);
+    if (standardMatch && standardMatch[1]) {
+      const videoId = standardMatch[1];
+      return `https://www.youtube.com/embed/${videoId}`;
     }
-    
-    // If URL doesn't match known patterns, return as-is.
+    // Return the URL unchanged if it doesn't match known patterns
     return url;
   }
+  
   

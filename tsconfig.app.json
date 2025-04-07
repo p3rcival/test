@@ -23,6 +23,6 @@
     ]
     // You can remove the "types" field if it was only to include expo-router/entry.
   },
-  "include": ["./app", "./src", "./types", "./components"],
+  "include": ["./app", "./src", "./types", "./components", "./utils"],
   "exclude": ["node_modules"]
 }

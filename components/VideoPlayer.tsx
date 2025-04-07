@@ -1,40 +1,42 @@
-// src/components/VideoPlayer.tsx
 import React from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { View, Dimensions, StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
+import convertYoutubeUrl from '../utils/convertYoutubeUrl';
 
-/**
- * Converts a YouTube URL (short or standard) to an embed URL.
- */
-export function convertShortUrlToEmbed(url: string): string {
-  // Check for the short URL format (e.g., https://youtu.be/xyz)
-  const shortUrlRegex = /^https?:\/\/youtu\.be\/([^?]+)/;
-  const shortMatch = url.match(shortUrlRegex);
-  if (shortMatch && shortMatch[1]) {
-    const videoId = shortMatch[1];
-    return `https://www.youtube.com/embed/${videoId}`;
-  }
+const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
+  // Convert to embed URL if necessary
+  const embedUrl = convertYoutubeUrl(videoUrl);
+  // Calculate height based on device width for a 16:9 ratio
+  const videoWidth = Dimensions.get('window').width;
+  const videoHeight = videoWidth * (9 / 16);
 
-  // Check for the standard URL format (e.g., https://www.youtube.com/watch?v=xyz)
-  const standardUrlRegex = /^https?:\/\/www\.youtube\.com\/watch\?v=([^&]+)/;
-  const standardMatch = url.match(standardUrlRegex);
-  if (standardMatch && standardMatch[1]) {
-    const videoId = standardMatch[1];
-    return `https://www.youtube.com/embed/${videoId}`;
-  }
-
-  // If no pattern is matched, return the URL as is.
-  return url;
-}
-
-export const VideoPlayer: React.FC<{ videoUrl: string }> = ({ videoUrl }) => {
-  const embedUrl = convertShortUrlToEmbed(videoUrl);
+  // HTML for embedding the YouTube player
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body, html { margin: 0; padding: 0; overflow: hidden; }
+        </style>
+      </head>
+      <body>
+        <iframe 
+          width="100%" 
+          height="100%" 
+          src="${embedUrl}" 
+          frameborder="0" 
+          allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" 
+          allowfullscreen>
+        </iframe>
+      </body>
+    </html>
+  `;
 
   return (
-    <View style={styles.container}>
-      <WebView
+    <View style={[styles.container, { height: videoHeight }]}>
+      <WebView 
+        source={{ html }} 
         style={styles.webview}
-        source={{ uri: embedUrl }}
         javaScriptEnabled
         domStorageEnabled
       />
@@ -44,10 +46,13 @@ export const VideoPlayer: React.FC<{ videoUrl: string }> = ({ videoUrl }) => {
 
 const styles = StyleSheet.create({
   container: {
-    width: Dimensions.get('window').width,
-    height: 220, // Adjust height as needed
+    width: '100%',
+    backgroundColor: '#000',
   },
   webview: {
     flex: 1,
   },
 });
+
+// Make sure you import or define convertShortUrlToEmbed in this file if it's not already in scope
+export default VideoPlayer;

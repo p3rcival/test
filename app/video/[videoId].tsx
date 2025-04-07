@@ -1,7 +1,7 @@
 // app/video/[videoId].tsx
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { VideoPlayer } from '../../components/VideoPlayer'; // Ensure this path is correct
+import VideoPlayer from '../../components/VideoPlayer';
 import { useLocalSearchParams } from 'expo-router';
 
 export default function VideoScreen() {
