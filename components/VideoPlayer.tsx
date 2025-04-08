@@ -1,58 +1,109 @@
-import React from 'react';
-import { View, Dimensions, StyleSheet } from 'react-native';
-import { WebView } from 'react-native-webview';
-import convertYoutubeUrl from '../utils/convertYoutubeUrl';
+import React, { useState } from 'react';
+import { View, Dimensions, StyleSheet, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { WebView, WebViewNavigation } from 'react-native-webview';
+import extractYoutubeVideoId from '../utils/extractYoutubeVideoId';
+import * as Linking from 'expo-linking';
 
-const VideoPlayer = ({ videoUrl }: { videoUrl: string }) => {
-  // Convert to embed URL if necessary
-  const embedUrl = convertYoutubeUrl(videoUrl);
-  // Calculate height based on device width for a 16:9 ratio
-  const videoWidth = Dimensions.get('window').width;
-  const videoHeight = videoWidth * (9 / 16);
+interface VideoPlayerProps {
+  url: string;
+}
 
-  // HTML for embedding the YouTube player
-  const html = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <style>
-          body, html { margin: 0; padding: 0; overflow: hidden; }
-        </style>
-      </head>
-      <body>
-        <iframe 
-          width="100%" 
-          height="100%" 
-          src="${embedUrl}" 
-          frameborder="0" 
-          allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" 
-          allowfullscreen>
-        </iframe>
-      </body>
-    </html>
-  `;
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ url }) => {
+  const [loading, setLoading] = useState(true);
+  const videoId = extractYoutubeVideoId(url);
+
+  if (!videoId) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>Invalid YouTube URL</Text>
+      </View>
+    );
+  }
+
+  // Construct the embed URL with playsinline enabled
+  const embedUrl = `https://www.youtube.com/embed/${videoId}?playsinline=1`;
+  console.log('[VideoPlayer] Using embed URL:', embedUrl);
+
+  // Calculate dimensions based on screen width
+  const screenWidth = Dimensions.get('window').width;
+  const videoHeight = screenWidth * (9 / 16);
+
+  /**
+   * Intercepts navigation requests:
+   * Allow any URL that starts with the embed base URL (to account for extra query parameters).
+   * Otherwise, open it externally.
+   */
+  const handleShouldStartLoadWithRequest = (request: WebViewNavigation): boolean => {
+    if (request.url.startsWith("https://www.youtube.com/embed/")) {
+      return true;
+    }
+    console.log('[VideoPlayer] Intercepting navigation to:', request.url);
+    Linking.openURL(request.url);
+    return false;
+  };
 
   return (
-    <View style={[styles.container, { height: videoHeight }]}>
-      <WebView 
-        source={{ html }} 
-        style={styles.webview}
+    <View style={styles.container}>
+      {loading && (
+        <ActivityIndicator style={styles.loadingIndicator} color="#fff" size="large" />
+      )}
+      <WebView
+        style={{ width: screenWidth, height: videoHeight }}
+        source={{ uri: embedUrl }}
         javaScriptEnabled
         domStorageEnabled
+        userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36"
+        onLoadStart={() => setLoading(true)}
+        onLoadEnd={() => setLoading(false)}
+        onError={(syntheticEvent) => {
+          console.error('[VideoPlayer] WebView error:', syntheticEvent.nativeEvent);
+        }}
+        onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
       />
+      {!loading && (
+        <TouchableOpacity onPress={() => Linking.openURL(embedUrl)}>
+          <View style={styles.fallbackContainer}>
+            <Text style={styles.fallbackText}>
+              If the video is not displaying, tap here to open it in YouTube.
+            </Text>
+          </View>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    width: '100%',
     backgroundColor: '#000',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 16,
+    paddingVertical: 20,
   },
-  webview: {
-    flex: 1,
+  loadingIndicator: {
+    position: 'absolute',
+    top: '45%',
+    zIndex: 1,
+  },
+  errorContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  errorText: {
+    color: 'red',
+  },
+  fallbackContainer: {
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  fallbackText: {
+    color: '#fff',
+    marginBottom: 8,
+    fontSize: 16,
+    textAlign: 'center',
+    paddingHorizontal: 16,
   },
 });
 
-// Make sure you import or define convertShortUrlToEmbed in this file if it's not already in scope
 export default VideoPlayer;
