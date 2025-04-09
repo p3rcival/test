@@ -108,27 +108,29 @@ export default function Home() {
       });
       return;
     }
-
-    const updatedSchedule = {
-      ...workoutSchedule,
+  
+    const updatedExercises = [...(workoutSchedule[dateKey]?.exercises || []), exercise];
+  
+    // Safely update state using functional set
+    setWorkoutSchedule(prev => ({
+      ...prev,
       [dateKey]: {
         date: dateKey,
-        exercises: [...(workoutSchedule[dateKey]?.exercises || []), exercise],
+        exercises: updatedExercises,
       },
-    };
-
-    setWorkoutSchedule(updatedSchedule);
-
+    }));
+  
+    // Use the same updatedExercises to persist to Supabase
     const { error } = await supabase
       .from('workout_schedules')
       .upsert({
         user_id: user.id,
         date: dateKey,
-        exercises: updatedSchedule[dateKey].exercises,
+        exercises: updatedExercises,
       }, {
         onConflict: 'user_id,date'
       });
-
+  
     if (error) {
       Toast.show({
         type: 'error',

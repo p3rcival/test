@@ -7,12 +7,14 @@ import Toast from 'react-native-toast-message';
 import { useTheme } from '@/src/context/ThemeContext';
 import uuid from 'react-native-uuid';
 import { User } from '@supabase/supabase-js'; // or wherever your User type is defined
+import { useRouter } from 'expo-router';
 
 interface ExerciseFormProps {
   onAddExercise: (exercise: Exercise) => void;
 }
 
 export function ExerciseForm({ onAddExercise }: ExerciseFormProps) {
+  const router = useRouter();
   const { isDark } = useTheme();
   const [exercise, setExercise] = useState<Omit<Exercise, 'id'>>({
     name: '',
@@ -87,15 +89,15 @@ export function ExerciseForm({ onAddExercise }: ExerciseFormProps) {
   };
 
   const handleSubmit = async () => {
-    // Dismiss the keyboard so that the button tap isn't swallowed on Android
     Keyboard.dismiss();
-
+  
     const newExercise = {
       ...exercise,
-      id: uuid.v4(),
+      id: uuid.v4() as string, // Ensure ID is treated as a string
     };
+  
     onAddExercise(newExercise);
-
+  
     if (!isFromTemplate && user) {
       const { error } = await supabase
         .from('exercise_templates')
@@ -108,7 +110,7 @@ export function ExerciseForm({ onAddExercise }: ExerciseFormProps) {
           video_urls: exercise.videoUrls || [],
           notes: exercise.notes,
         }]);
-
+  
       if (error) {
         Toast.show({
           type: 'error',
@@ -123,7 +125,7 @@ export function ExerciseForm({ onAddExercise }: ExerciseFormProps) {
         loadTemplates();
       }
     }
-
+  
     setExercise({
       name: '',
       sets: 3,
@@ -135,6 +137,7 @@ export function ExerciseForm({ onAddExercise }: ExerciseFormProps) {
     setNewVideoUrl('');
     setIsFromTemplate(false);
   };
+  
 
   const handleSelectTemplate = (template: Exercise) => {
     const videoUrls = Array.isArray(template.videoUrls) 
@@ -205,7 +208,7 @@ export function ExerciseForm({ onAddExercise }: ExerciseFormProps) {
           </Text>
         </TouchableOpacity>
         {!user && (
-          <TouchableOpacity onPress={() => {}}>
+          <TouchableOpacity onPress={() => router.push('/settings')}>
             <Text style={styles.signInText}>Sign in to save templates</Text>
           </TouchableOpacity>
         )}
