@@ -1,10 +1,19 @@
 // components/ExerciseDetails.tsx
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, ScrollView, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Modal,
+  ScrollView,
+  Platform,
+} from 'react-native';
 import { Exercise } from '../types';
 import { X, Video, FileText, Plus, Trash2, Play } from 'lucide-react-native';
 import { useTheme } from '@/src/context/ThemeContext';
-import { useRouter } from 'expo-router';
+import VideoPlayer from '../../components/VideoPlayer';
 
 interface ExerciseDetailsProps {
   exercise: Exercise;
@@ -12,18 +21,12 @@ interface ExerciseDetailsProps {
   onUpdate: (updatedExercise: Exercise) => void;
 }
 
-function getYouTubeVideoId(url: string): string | null {
-  const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-  const match = url.match(youtubeRegex);
-  return match ? match[1] : null;
-}
-
 export function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetailsProps) {
   const { isDark } = useTheme();
   const [videoUrls, setVideoUrls] = useState<string[]>(exercise.videoUrls || []);
   const [newVideoUrl, setNewVideoUrl] = useState('');
   const [notes, setNotes] = useState(exercise.notes || '');
-  const router = useRouter();
+  const [videoModalUrl, setVideoModalUrl] = useState<string | null>(null);
 
   const handleAddVideo = () => {
     if (newVideoUrl && !videoUrls.includes(newVideoUrl)) {
@@ -45,25 +48,15 @@ export function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetails
   };
 
   const handlePlayVideo = (url: string) => {
-    const videoId = getYouTubeVideoId(url);
-    if (videoId) {
-      router.push(`/video/${videoId}`);
-    }
+    setVideoModalUrl(url);
   };
 
   return (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={true}
-      onRequestClose={onClose}
-    >
+    <Modal animationType="slide" transparent={true} visible={true} onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
         <View style={[styles.modalContent, isDark && styles.modalContentDark]}>
           <View style={[styles.header, isDark && styles.headerDark]}>
-            <Text style={[styles.title, isDark && styles.titleDark]}>
-              {exercise.name}
-            </Text>
+            <Text style={[styles.title, isDark && styles.titleDark]}>{exercise.name}</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <X size={24} color={isDark ? '#9CA3AF' : '#6B7280'} />
             </TouchableOpacity>
@@ -84,17 +77,17 @@ export function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetails
                   Exercise Videos
                 </Text>
               </View>
-              
+
               {videoUrls.map((url, index) => (
-                <View key={index} style={[styles.videoUrlContainer, isDark && styles.videoUrlContainerDark]}>
+                <View
+                  key={index}
+                  style={[styles.videoUrlContainer, isDark && styles.videoUrlContainerDark]}
+                >
                   <Text style={[styles.videoUrl, isDark && styles.videoUrlDark]} numberOfLines={1}>
                     {url}
                   </Text>
                   <View style={styles.videoActions}>
-                    <TouchableOpacity
-                      onPress={() => handlePlayVideo(url)}
-                      style={styles.playButton}
-                    >
+                    <TouchableOpacity onPress={() => handlePlayVideo(url)} style={styles.playButton}>
                       <Play size={18} color={isDark ? '#60A5FA' : '#3B82F6'} />
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -106,7 +99,7 @@ export function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetails
                   </View>
                 </View>
               ))}
-              
+
               <View style={styles.addVideoContainer}>
                 <TextInput
                   style={[styles.input, styles.flex1, isDark && styles.inputDark]}
@@ -115,10 +108,7 @@ export function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetails
                   placeholder="https://youtube.com/watch?v=..."
                   placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
                 />
-                <TouchableOpacity
-                  onPress={handleAddVideo}
-                  style={styles.addButton}
-                >
+                <TouchableOpacity onPress={handleAddVideo} style={styles.addButton}>
                   <Plus size={18} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
@@ -153,15 +143,56 @@ export function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetails
                 Cancel
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleSubmit}
-              style={[styles.button, styles.saveButton]}
-            >
+            <TouchableOpacity onPress={handleSubmit} style={[styles.button, styles.saveButton]}>
               <Text style={styles.saveButtonText}>Save Changes</Text>
             </TouchableOpacity>
           </View>
         </View>
       </View>
+
+      {/* Nested Video Modal */}
+      <Modal
+        visible={!!videoModalUrl}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setVideoModalUrl(null)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.85)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          {videoModalUrl && (
+            <View
+              style={{
+                width: '90%',
+                height: 250,
+                backgroundColor: '#000',
+                borderRadius: 10,
+                overflow: 'hidden',
+              }}
+            >
+              <VideoPlayer url={videoModalUrl} onReturn={() => setVideoModalUrl(null)} />
+              <TouchableOpacity
+                onPress={() => setVideoModalUrl(null)}
+                style={{
+                  position: 'absolute',
+                  top: 10,
+                  right: 10,
+                  padding: 8,
+                  backgroundColor: 'rgba(0,0,0,0.6)',
+                  borderRadius: 20,
+                }}
+              >
+                <Text style={{ color: '#FFF' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </Modal>
     </Modal>
   );
 }

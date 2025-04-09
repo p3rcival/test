@@ -11,12 +11,13 @@ import Toast from 'react-native-toast-message';
 import { useTheme } from '@/src/context/ThemeContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
+import { User } from '@supabase/supabase-js';
 
 export default function Home() {
   const { isDark } = useTheme();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [workoutSchedule, setWorkoutSchedule] = useState<WorkoutSchedule>({});
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useFocusEffect(

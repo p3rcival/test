@@ -1,109 +1,80 @@
-import React, { useState } from 'react';
-import { View, Dimensions, StyleSheet, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { WebView, WebViewNavigation } from 'react-native-webview';
-import extractYoutubeVideoId from '../utils/extractYoutubeVideoId';
-import * as Linking from 'expo-linking';
+// components/VideoPlayer.tsx
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Linking, Platform, View, Text, TouchableOpacity, StyleSheet, useWindowDimensions, Modal, AppState } from 'react-native';
+import WebView from 'react-native-webview';
+import { getEmbedUrl } from '../utils/getEmbedUrl';
 
-interface VideoPlayerProps {
-  url: string;
-}
-
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ url }) => {
+const VideoPlayer = ({ url, onReturn }: { url: string, onReturn?: () => void }) => {
+  const embedUrl = getEmbedUrl(url);
+  const { width } = useWindowDimensions();
+  const height = (width * 9) / 16;
   const [loading, setLoading] = useState(true);
-  const videoId = extractYoutubeVideoId(url);
 
-  if (!videoId) {
-    return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Invalid YouTube URL</Text>
-      </View>
-    );
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && onReturn) {
+        onReturn();
+      }
+    });
+    return () => subscription.remove();
+  }, [onReturn]);
+
+  if (!embedUrl) {
+    return <Text style={styles.errorText}>Invalid or unsupported video URL</Text>;
   }
 
-  // Construct the embed URL with playsinline enabled
-  const embedUrl = `https://www.youtube.com/embed/${videoId}?playsinline=1`;
-  console.log('[VideoPlayer] Using embed URL:', embedUrl);
-
-  // Calculate dimensions based on screen width
-  const screenWidth = Dimensions.get('window').width;
-  const videoHeight = screenWidth * (9 / 16);
-
-  /**
-   * Intercepts navigation requests:
-   * Allow any URL that starts with the embed base URL (to account for extra query parameters).
-   * Otherwise, open it externally.
-   */
-  const handleShouldStartLoadWithRequest = (request: WebViewNavigation): boolean => {
-    if (request.url.startsWith("https://www.youtube.com/embed/")) {
-      return true;
-    }
-    console.log('[VideoPlayer] Intercepting navigation to:', request.url);
-    Linking.openURL(request.url);
-    return false;
-  };
-
   return (
-    <View style={styles.container}>
+    <View style={{ width, height }}>
       {loading && (
-        <ActivityIndicator style={styles.loadingIndicator} color="#fff" size="large" />
+        <ActivityIndicator size="large" style={StyleSheet.absoluteFill} />
       )}
       <WebView
-        style={{ width: screenWidth, height: videoHeight }}
         source={{ uri: embedUrl }}
+        style={{ flex: 1 }}
+        allowsFullscreenVideo
+        allowsInlineMediaPlayback
         javaScriptEnabled
         domStorageEnabled
-        userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36"
-        onLoadStart={() => setLoading(true)}
+        mediaPlaybackRequiresUserAction={false}
         onLoadEnd={() => setLoading(false)}
-        onError={(syntheticEvent) => {
-          console.error('[VideoPlayer] WebView error:', syntheticEvent.nativeEvent);
+        onShouldStartLoadWithRequest={(req) => {
+          const allowed = embedUrl.includes(req.url) || req.url.startsWith('https://www.youtube.com') || req.url.startsWith('https://player.vimeo.com');
+          if (!allowed) Linking.openURL(req.url);
+          return allowed;
         }}
-        onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
+        onError={(e) => {
+          const { nativeEvent } = e;
+          console.error('WebView error:', nativeEvent);
+        }}
       />
-      {!loading && (
-        <TouchableOpacity onPress={() => Linking.openURL(embedUrl)}>
-          <View style={styles.fallbackContainer}>
-            <Text style={styles.fallbackText}>
-              If the video is not displaying, tap here to open it in YouTube.
-            </Text>
-          </View>
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity onPress={() => Linking.openURL(url)}>
+        <Text style={styles.fallbackText}>Open in browser</Text>
+      </TouchableOpacity>
     </View>
   );
 };
 
+export default VideoPlayer;
+
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#000',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 16,
-    paddingVertical: 20,
-  },
-  loadingIndicator: {
-    position: 'absolute',
-    top: '45%',
-    zIndex: 1,
-  },
-  errorContainer: {
-    padding: 20,
-    alignItems: 'center',
-  },
   errorText: {
     color: 'red',
-  },
-  fallbackContainer: {
-    marginTop: 16,
-    alignItems: 'center',
+    textAlign: 'center',
+    marginVertical: 10,
   },
   fallbackText: {
-    color: '#fff',
-    marginBottom: 8,
-    fontSize: 16,
+    marginTop: 5,
     textAlign: 'center',
-    paddingHorizontal: 16,
-  },
+    color: '#3B82F6',
+    textDecorationLine: 'underline'
+  }
 });
 
-export default VideoPlayer;
+
+// Usage of VideoPlayer in modal:
+// <Modal visible={!!videoModalUrl} transparent={false} animationType="slide" onRequestClose={() => setVideoModalUrl(null)}>
+//   <VideoPlayer url={videoModalUrl!} onReturn={() => setVideoModalUrl(null)} />
+//   <TouchableOpacity onPress={() => setVideoModalUrl(null)} style={{ padding: 10, alignSelf: 'center' }}>
+//     <Text style={{ color: 'blue' }}>Close</Text>
+//   </TouchableOpacity>
+// </Modal>
