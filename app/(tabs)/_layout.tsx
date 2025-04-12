@@ -4,6 +4,7 @@ import { useTheme } from '@/src/context/ThemeContext';
 import { ThemeToggle } from '@/src/components/ThemeToggle';
 import { View, StyleSheet } from 'react-native';
 
+
 export default function TabLayout() {
   const { isDark } = useTheme();
 
@@ -27,20 +28,25 @@ export default function TabLayout() {
         ),
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: 'Settings',
-          tabBarIcon: ({ color, size }) => <Settings size={size} color={color} />,
-        }}
-      />
+  <Tabs.Screen
+    name="index"
+    options={{
+      title: 'Home',
+      tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+        <Home size={size} color={color} />
+      ),
+    }}
+  />
+
+  <Tabs.Screen
+    name="settings"
+    options={{
+      title: 'Sign In',
+      tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+        <Settings size={size} color={color} />
+      ),
+    }}
+  />
     </Tabs>
   );
 }

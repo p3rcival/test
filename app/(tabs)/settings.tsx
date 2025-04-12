@@ -3,16 +3,18 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-nativ
 import { supabase } from '@/lib/supabase';
 import { useTheme } from '@/src/context/ThemeContext';
 import { LogOut, Mail, Lock, LogIn } from 'lucide-react-native';
+import { User } from '@supabase/supabase-js';
 
 export default function Settings() {
   const { isDark } = useTheme();
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user || null);
     });
@@ -35,7 +37,7 @@ export default function Settings() {
         password,
       });
       if (error) throw error;
-    } catch (error) {
+    } catch (error: any) {
       setError(error.message);
     } finally {
       setLoading(false);
@@ -52,7 +54,7 @@ export default function Settings() {
       });
       if (error) throw error;
       setError('Check your email for the confirmation link');
-    } catch (error) {
+    } catch (error: any) {
       setError(error.message);
     } finally {
       setLoading(false);

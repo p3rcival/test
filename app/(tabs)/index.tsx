@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView } from 'react-native';
 import { format } from 'date-fns';
 import { Dumbbell } from 'lucide-react-native';
 import { Calendar } from '@/src/components/Calendar';
@@ -140,6 +140,15 @@ export default function Home() {
     }
   };
 
+  const isPastDate = (date: Date): boolean => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Ignore time portion of today's date
+    const compareDate = new Date(date);
+    compareDate.setHours(0, 0, 0, 0); // Ignore time portion of selected date
+    return compareDate < today;
+  };
+  
+
   const handleRemoveExercise = async (exerciseId: string) => {
     if (!user) {
       Toast.show({
@@ -237,52 +246,66 @@ export default function Home() {
   };
 
   return (
-    <View style={[styles.container, isDark && styles.containerDark]}>
-      <View style={[styles.header, isDark && styles.headerDark]}>
-        <Dumbbell size={24} color="#3B82F6" />
-        <Text style={[styles.title, isDark && styles.titleDark]}>
-          Workout Scheduler
-        </Text>
-      </View>
-      
-      <ScrollView style={styles.content}>
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <Text style={[styles.loadingText, isDark && styles.loadingTextDark]}>
-              Loading your workouts...
-            </Text>
-          </View>
-        ) : (
-          <>
-            <View style={[styles.section, isDark && styles.sectionDark]}>
-              <DaySchedule
-                date={selectedDate}
-                exercises={daySchedule.exercises}
-                onRemoveExercise={handleRemoveExercise}
-                onUpdateExercise={handleUpdateExercise}
-              />
-            </View>
-
-            <View style={[styles.section, isDark && styles.sectionDark]}>
-              <Calendar
-                selectedDate={selectedDate}
-                workoutSchedule={workoutSchedule}
-                onSelectDate={setSelectedDate}
-              />
-            </View>
-
-            <View style={[styles.section, isDark && styles.sectionDark]}>
-              <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
-                Add Exercise
+    <SafeAreaView style={{ flex: 1 }}>
+      <View style={[styles.container, isDark && styles.containerDark]}>
+        <View style={[styles.header, isDark && styles.headerDark]}>
+          <Dumbbell size={24} color="#3B82F6" />
+          <Text style={[styles.title, isDark && styles.titleDark]}>
+            Workout Scheduler
+          </Text>
+        </View>
+        
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={{ paddingBottom: 80 }} // Added bottom padding for visibility
+        >
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={[styles.loadingText, isDark && styles.loadingTextDark]}>
+                Loading your workouts...
               </Text>
-              <ExerciseForm onAddExercise={handleAddExercise} />
             </View>
-          </>
-        )}
-      </ScrollView>
-      <Toast />
-    </View>
-  );
+          ) : (
+            <>
+              <View style={[styles.section, isDark && styles.sectionDark]}>
+                <DaySchedule
+                  date={selectedDate}
+                  exercises={daySchedule.exercises}
+                  onRemoveExercise={handleRemoveExercise}
+                  onUpdateExercise={handleUpdateExercise}
+                />
+              </View>
+  
+              <View style={[styles.section, isDark && styles.sectionDark]}>
+                <Calendar
+                  selectedDate={selectedDate}
+                  workoutSchedule={workoutSchedule}
+                  onSelectDate={setSelectedDate}
+                />
+              </View>
+  
+              {/* Conditionally render the "Add Exercise" section */}
+              {!isPastDate(selectedDate) ? (
+                <View style={[styles.section, isDark && styles.sectionDark]}>
+                  <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+                    Add Exercise
+                  </Text>
+                  <ExerciseForm onAddExercise={handleAddExercise} />
+                </View>
+              ) : (
+                <View style={[styles.section, isDark && styles.sectionDark]}>
+                  <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+                    Add Exercise
+                  </Text>
+                </View>
+              )}
+            </>
+          )}
+        </ScrollView>
+        <Toast />
+      </View>
+    </SafeAreaView>
+  );  
 }
 
 const styles = StyleSheet.create({

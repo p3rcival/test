@@ -281,7 +281,7 @@ export function ExerciseForm({ onAddExercise }: ExerciseFormProps) {
             />
           </View>
           <View style={[styles.formGroup, styles.flex1]}>
-            <Text style={[styles.label, isDark && styles.labelDark]}>Weight (kg)</Text>
+            <Text style={[styles.label, isDark && styles.labelDark]}>Weight (lb)</Text>
             <TextInput
               style={[styles.input, isDark && styles.inputDark]}
               value={exercise.weight?.toString() || ''}

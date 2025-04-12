@@ -1,4 +1,3 @@
-// components/ExerciseDetails.tsx
 import React, { useState } from 'react';
 import {
   View,
@@ -14,6 +13,8 @@ import { Exercise } from '../types';
 import { X, Video, FileText, Plus, Trash2, Play } from 'lucide-react-native';
 import { useTheme } from '@/src/context/ThemeContext';
 import VideoPlayer from '../../components/VideoPlayer';
+import { useRouter } from 'expo-router';
+import extractYoutubeVideoId from '../../utils/extractYoutubeVideoId';
 
 interface ExerciseDetailsProps {
   exercise: Exercise;
@@ -21,12 +22,16 @@ interface ExerciseDetailsProps {
   onUpdate: (updatedExercise: Exercise) => void;
 }
 
-export function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetailsProps) {
+function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetailsProps) {
   const { isDark } = useTheme();
   const [videoUrls, setVideoUrls] = useState<string[]>(exercise.videoUrls || []);
   const [newVideoUrl, setNewVideoUrl] = useState('');
   const [notes, setNotes] = useState(exercise.notes || '');
   const [videoModalUrl, setVideoModalUrl] = useState<string | null>(null);
+  // State to track if the video is in full-screen mode.
+  const [isVideoFullScreen, setIsVideoFullScreen] = useState(false);
+  // existing state and code...
+  const router = useRouter();
 
   const handleAddVideo = () => {
     if (newVideoUrl && !videoUrls.includes(newVideoUrl)) {
@@ -48,15 +53,27 @@ export function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetails
   };
 
   const handlePlayVideo = (url: string) => {
-    setVideoModalUrl(url);
+    const videoId = extractYoutubeVideoId(url);
+    if (videoId) {
+      router.push(`/video/${videoId}`);
+    } else {
+      console.error('Invalid video URL:', url);
+    }
   };
 
   return (
-    <Modal animationType="slide" transparent={true} visible={true} onRequestClose={onClose}>
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={true}
+      onRequestClose={onClose}
+    >
       <View style={styles.modalOverlay}>
         <View style={[styles.modalContent, isDark && styles.modalContentDark]}>
           <View style={[styles.header, isDark && styles.headerDark]}>
-            <Text style={[styles.title, isDark && styles.titleDark]}>{exercise.name}</Text>
+            <Text style={[styles.title, isDark && styles.titleDark]}>
+              {exercise.name}
+            </Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <X size={24} color={isDark ? '#9CA3AF' : '#6B7280'} />
             </TouchableOpacity>
@@ -64,7 +81,12 @@ export function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetails
 
           <ScrollView style={styles.content}>
             <View style={[styles.exerciseInfo, isDark && styles.exerciseInfoDark]}>
-              <Text style={[styles.exerciseDetails, isDark && styles.exerciseDetailsDark]}>
+              <Text
+                style={[
+                  styles.exerciseDetails,
+                  isDark && styles.exerciseDetailsDark,
+                ]}
+              >
                 {exercise.sets} sets × {exercise.reps} reps
                 {exercise.weight && ` @ ${exercise.weight}kg`}
               </Text>
@@ -73,7 +95,12 @@ export function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetails
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Video size={16} color={isDark ? '#D1D5DB' : '#4B5563'} />
-                <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+                <Text
+                  style={[
+                    styles.sectionTitle,
+                    isDark && styles.sectionTitleDark,
+                  ]}
+                >
                   Exercise Videos
                 </Text>
               </View>
@@ -81,13 +108,25 @@ export function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetails
               {videoUrls.map((url, index) => (
                 <View
                   key={index}
-                  style={[styles.videoUrlContainer, isDark && styles.videoUrlContainerDark]}
+                  style={[
+                    styles.videoUrlContainer,
+                    isDark && styles.videoUrlContainerDark,
+                  ]}
                 >
-                  <Text style={[styles.videoUrl, isDark && styles.videoUrlDark]} numberOfLines={1}>
+                  <Text
+                    style={[
+                      styles.videoUrl,
+                      isDark && styles.videoUrlDark,
+                    ]}
+                    numberOfLines={1}
+                  >
                     {url}
                   </Text>
                   <View style={styles.videoActions}>
-                    <TouchableOpacity onPress={() => handlePlayVideo(url)} style={styles.playButton}>
+                    <TouchableOpacity
+                      onPress={() => handlePlayVideo(url)}
+                      style={styles.playButton}
+                    >
                       <Play size={18} color={isDark ? '#60A5FA' : '#3B82F6'} />
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -155,7 +194,12 @@ export function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetails
         visible={!!videoModalUrl}
         transparent={true}
         animationType="fade"
-        onRequestClose={() => setVideoModalUrl(null)}
+        // Use "overFullScreen" when video is in full-screen mode.
+        presentationStyle={isVideoFullScreen ? "overFullScreen" : "pageSheet"}
+        onRequestClose={() => {
+          setVideoModalUrl(null);
+          setIsVideoFullScreen(false);
+        }}
       >
         <View
           style={{
@@ -165,7 +209,7 @@ export function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetails
             alignItems: 'center',
           }}
         >
-          {videoModalUrl && (
+          {videoModalUrl && !isVideoFullScreen && (
             <View
               style={{
                 width: '90%',
@@ -175,9 +219,19 @@ export function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetails
                 overflow: 'hidden',
               }}
             >
-              <VideoPlayer url={videoModalUrl} onReturn={() => setVideoModalUrl(null)} />
+              <VideoPlayer
+                url={videoModalUrl}
+                onReturn={() => {
+                  setVideoModalUrl(null);
+                  setIsVideoFullScreen(false);
+                }}
+                onFullScreenChange={(status: boolean) => setIsVideoFullScreen(status)}
+              />
               <TouchableOpacity
-                onPress={() => setVideoModalUrl(null)}
+                onPress={() => {
+                  setVideoModalUrl(null);
+                  setIsVideoFullScreen(false);
+                }}
                 style={{
                   position: 'absolute',
                   top: 10,
@@ -386,3 +440,5 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
   },
 });
+
+export { ExerciseDetails };

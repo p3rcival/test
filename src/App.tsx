@@ -8,7 +8,6 @@ import { Dumbbell } from 'lucide-react-native';
 import { ThemeToggle } from './components/ThemeToggle';
 import { supabase } from './lib/supabase';
 import { Auth } from './components/Auth';
-//import toast from 'react-hot-toast';
 import { User } from '@supabase/supabase-js'; // or wherever your User type is defined
 import { useTheme } from '@/src/context/ThemeContext';
 

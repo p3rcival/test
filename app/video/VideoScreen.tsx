@@ -5,17 +5,23 @@ import { useTheme } from '@/src/context/ThemeContext';
 import VideoPlayer from '../../components/VideoPlayer';
 
 export default function VideoScreen() {
-  // Retrieve the route parameter "videoId"
+  // Retrieve videoId from route parameters.
   const params = useLocalSearchParams<{ videoId: string }>();
   const { videoId } = params;
-  const { isDark } = useTheme();
-  const router = useRouter();
 
-  // Construct the full YouTube URL from videoId.
+  // Use our theme context.
+  const { isDark } = useTheme();
+
+  // Construct the full YouTube URL.
   const constructedUrl = videoId ? `https://www.youtube.com/watch?v=${videoId}` : '';
 
-  // If no videoId is available, render nothing.
-  if (!videoId) return null;
+  // Ensure we have a videoId.
+  if (!videoId) {
+    return null;
+  }
+
+  // Get the router for navigating back.
+  const router = useRouter();
 
   return (
     <>
@@ -29,8 +35,8 @@ export default function VideoScreen() {
         }}
       />
       <View style={styles.container}>
-        <VideoPlayer 
-          url={constructedUrl} 
+        <VideoPlayer
+          url={constructedUrl}
           onReturn={() => router.back()}
         />
       </View>
@@ -41,6 +47,6 @@ export default function VideoScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000', // dark background for video playback
+    backgroundColor: '#000', // Dark background for video playback.
   },
 });
