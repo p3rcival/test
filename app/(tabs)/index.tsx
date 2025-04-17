@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView } from 'react-native';
-import { format } from 'date-fns';
+import { format, startOfDay, isBefore } from 'date-fns';
 import { Dumbbell } from 'lucide-react-native';
 import { Calendar } from '@/src/components/Calendar';
 import { ExerciseForm } from '@/src/components/ExerciseForm';
@@ -13,9 +13,10 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
 import { User } from '@supabase/supabase-js';
 
+
 export default function Home() {
   const { isDark } = useTheme();
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()))
   const [workoutSchedule, setWorkoutSchedule] = useState<WorkoutSchedule>({});
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -140,13 +141,9 @@ export default function Home() {
     }
   };
 
-  const isPastDate = (date: Date): boolean => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Ignore time portion of today's date
-    const compareDate = new Date(date);
-    compareDate.setHours(0, 0, 0, 0); // Ignore time portion of selected date
-    return compareDate < today;
-  };
+    // NEW (safe & clear):
+    const isPastDate = (date: Date) =>
+      isBefore(startOfDay(date), startOfDay(new Date()));
   
 
   const handleRemoveExercise = async (exerciseId: string) => {
@@ -284,21 +281,17 @@ export default function Home() {
                 />
               </View>
   
-              {/* Conditionally render the "Add Exercise" section */}
-              {!isPastDate(selectedDate) ? (
-                <View style={[styles.section, isDark && styles.sectionDark]}>
-                  <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
-                    Add Exercise
-                  </Text>
+              {/* Always render the section wrapper + title */}
+              <View style={[styles.section, isDark && styles.sectionDark]}>
+                <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+                  Add Exercise
+                </Text>
+                {/* Only show the form on today or future dates */}
+                {!isPastDate(selectedDate) && (
                   <ExerciseForm onAddExercise={handleAddExercise} />
-                </View>
-              ) : (
-                <View style={[styles.section, isDark && styles.sectionDark]}>
-                  <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
-                    Add Exercise
-                  </Text>
-                </View>
-              )}
+                )}
+              </View>
+
             </>
           )}
         </ScrollView>

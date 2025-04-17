@@ -29,7 +29,6 @@ const VideoPlayer = ({ url, onReturn, onFullScreenChange }: VideoPlayerProps) =>
   const [loading, setLoading] = useState(true);
   const [playing, setPlaying] = useState(true);
   const [isFullScreen, setIsFullScreen] = useState(false);
-  // New state to track if a fallback link was used.
   const [fallbackUsed, setFallbackUsed] = useState(false);
 
   const videoId = extractYoutubeVideoId(url);
@@ -38,41 +37,34 @@ const VideoPlayer = ({ url, onReturn, onFullScreenChange }: VideoPlayerProps) =>
 
   console.log('VideoPlayer mounted. URL:', url);
 
-  // AppState listener to log app focus changes.
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
       console.log('AppState changed to:', state);
-      // If coming back to active state and a fallback link was triggered,
-      // we want to navigate to the home page.
-      if (state === 'active' && fallbackUsed) {
-        console.log('Fallback link was used. Navigating to home page.');
-        router.replace('/'); // Navigate to the home page.
-      }
     });
     return () => {
       console.log('VideoPlayer unmounted.');
       subscription.remove();
     };
-  }, [fallbackUsed, router]);
+  }, []);
 
-  // Callback for YouTube player state changes.
   const onYoutubeStateChange = useCallback(
     (state: string) => {
       console.log('YouTube state changed:', state);
       if (state === 'ended') {
         setPlaying(false);
-        console.log('Video ended. Calling onReturn callback.');
-        if (onReturn) {
-          onReturn();
-        }
+        console.log('Video ended. Staying on the page.');
+        // Do not call onReturn() here in order to stay on the VideoScreen.
+        // if (onReturn) {
+        //   onReturn();
+        // }
       }
     },
-    [onReturn]
+    [] // Removed onReturn dependency if no longer used here.
   );
 
   if (isYouTube) {
     return (
-      <View style={{ width, height }}>
+      <View style={{ width, height, backgroundColor: 'black' }}>
         {loading && (
           <ActivityIndicator size="large" style={StyleSheet.absoluteFill} />
         )}
@@ -85,7 +77,10 @@ const VideoPlayer = ({ url, onReturn, onFullScreenChange }: VideoPlayerProps) =>
             console.log('YouTube player is ready.');
             setLoading(false);
           }}
-          webViewStyle={{ opacity: loading ? 0 : 1 }}
+          // Remove the opacity hack; set backgroundColor directly.
+          webViewStyle={{ backgroundColor: 'black' }}
+          // Force software rendering on Android.
+          webViewProps={{ androidLayerType: 'hardware' }}
           onFullScreenChange={(fullScreenStatus: boolean) => {
             setIsFullScreen(fullScreenStatus);
             console.log('Full-screen status changed:', fullScreenStatus);
@@ -99,6 +94,8 @@ const VideoPlayer = ({ url, onReturn, onFullScreenChange }: VideoPlayerProps) =>
             rel: false,
             fs: true,
             playsinline: true,
+            enablejsapi: 1, // enables JS API for more control
+            autoplay: 1,    // may force the video to start; test if it makes a difference
           } as any}
         />
         <View style={styles.fallbackContainer}>
@@ -107,7 +104,16 @@ const VideoPlayer = ({ url, onReturn, onFullScreenChange }: VideoPlayerProps) =>
             onPress={() => {
               console.log('Fallback link selected: Open in YouTube App');
               setFallbackUsed(true);
+              if (onReturn) {
+                console.log('Calling onReturn from fallback handler (YouTube App).');
+                onReturn();
+              }
               Linking.openURL(`vnd.youtube://watch?v=${videoId}`);
+              setTimeout(() => {
+                console.log('Navigating to home page due to fallback (YouTube App).');
+                //router.replace('/');
+                router.back();
+              }, 500);
             }}
           >
             <Text style={styles.fallbackText}>
@@ -119,7 +125,16 @@ const VideoPlayer = ({ url, onReturn, onFullScreenChange }: VideoPlayerProps) =>
             onPress={() => {
               console.log('Fallback link selected: Open in Browser');
               setFallbackUsed(true);
+              if (onReturn) {
+                console.log('Calling onReturn from fallback handler (Browser).');
+                onReturn();
+              }
               Linking.openURL(url);
+              setTimeout(() => {
+                console.log('Navigating to home page due to fallback (Browser).');
+                //router.replace('/');
+                router.back();
+              }, 500);
             }}
           >
             <Text style={styles.fallbackText}>
@@ -130,7 +145,7 @@ const VideoPlayer = ({ url, onReturn, onFullScreenChange }: VideoPlayerProps) =>
       </View>
     );
   }
-  
+
   if (!embedUrl) {
     console.log('No valid embed URL for:', url);
     return (
@@ -139,7 +154,7 @@ const VideoPlayer = ({ url, onReturn, onFullScreenChange }: VideoPlayerProps) =>
       </Text>
     );
   }
-  
+
   return (
     <View style={{ width, height }}>
       {loading && (
@@ -165,10 +180,15 @@ const VideoPlayer = ({ url, onReturn, onFullScreenChange }: VideoPlayerProps) =>
           if (!allowed) {
             console.log('Fallback triggered from WebView with request URL:', req.url);
             setFallbackUsed(true);
+            if (onReturn) {
+              console.log('Calling onReturn from WebView fallback.');
+              onReturn();
+            }
             Linking.openURL(req.url);
-            // Delay navigation to avoid overlap.
             setTimeout(() => {
-              router.replace('/');
+              console.log('Navigating to home page due to fallback (WebView).');
+              // router.replace('/');
+              router.back();
             }, 500);
           }
           return allowed;
@@ -184,9 +204,15 @@ const VideoPlayer = ({ url, onReturn, onFullScreenChange }: VideoPlayerProps) =>
           onPress={() => {
             console.log('Fallback link selected: Open in Browser (WebView fallback)');
             setFallbackUsed(true);
+            if (onReturn) {
+              console.log('Calling onReturn from fallback handler (WebView fallback).');
+              onReturn();
+            }
             Linking.openURL(url);
             setTimeout(() => {
-              router.replace('/');
+              console.log('Navigating to home page due to fallback (WebView fallback).');
+              //router.replace('/');
+              router.back();
             }, 500);
           }}
         >

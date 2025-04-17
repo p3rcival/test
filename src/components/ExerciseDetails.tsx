@@ -7,12 +7,10 @@ import {
   StyleSheet,
   Modal,
   ScrollView,
-  Platform,
 } from 'react-native';
 import { Exercise } from '../types';
 import { X, Video, FileText, Plus, Trash2, Play } from 'lucide-react-native';
 import { useTheme } from '@/src/context/ThemeContext';
-import VideoPlayer from '../../components/VideoPlayer';
 import { useRouter } from 'expo-router';
 import extractYoutubeVideoId from '../../utils/extractYoutubeVideoId';
 
@@ -20,17 +18,14 @@ interface ExerciseDetailsProps {
   exercise: Exercise;
   onClose: () => void;
   onUpdate: (updatedExercise: Exercise) => void;
+  modalVisible: boolean;
 }
 
-function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetailsProps) {
+function ExerciseDetails({ exercise, onClose, onUpdate, modalVisible }: ExerciseDetailsProps) {
   const { isDark } = useTheme();
   const [videoUrls, setVideoUrls] = useState<string[]>(exercise.videoUrls || []);
   const [newVideoUrl, setNewVideoUrl] = useState('');
   const [notes, setNotes] = useState(exercise.notes || '');
-  const [videoModalUrl, setVideoModalUrl] = useState<string | null>(null);
-  // State to track if the video is in full-screen mode.
-  const [isVideoFullScreen, setIsVideoFullScreen] = useState(false);
-  // existing state and code...
   const router = useRouter();
 
   const handleAddVideo = () => {
@@ -55,9 +50,13 @@ function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetailsProps) 
   const handlePlayVideo = (url: string) => {
     const videoId = extractYoutubeVideoId(url);
     if (videoId) {
+      console.log('ExerciseDetails: play pressed for video URL:', url);
+      // Dismiss the modal (this should update modalVisible in the parent)
+      //onClose();
+      // Navigate to the dedicated video screen.
       router.push(`/video/${videoId}`);
     } else {
-      console.error('Invalid video URL:', url);
+      console.error('ExerciseDetails: Invalid video URL:', url);
     }
   };
 
@@ -65,7 +64,7 @@ function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetailsProps) 
     <Modal
       animationType="slide"
       transparent={true}
-      visible={true}
+      visible={modalVisible} // Controlled by parent
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
@@ -81,12 +80,7 @@ function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetailsProps) 
 
           <ScrollView style={styles.content}>
             <View style={[styles.exerciseInfo, isDark && styles.exerciseInfoDark]}>
-              <Text
-                style={[
-                  styles.exerciseDetails,
-                  isDark && styles.exerciseDetailsDark,
-                ]}
-              >
+              <Text style={[styles.exerciseDetails, isDark && styles.exerciseDetailsDark]}>
                 {exercise.sets} sets × {exercise.reps} reps
                 {exercise.weight && ` @ ${exercise.weight}kg`}
               </Text>
@@ -95,31 +89,14 @@ function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetailsProps) 
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Video size={16} color={isDark ? '#D1D5DB' : '#4B5563'} />
-                <Text
-                  style={[
-                    styles.sectionTitle,
-                    isDark && styles.sectionTitleDark,
-                  ]}
-                >
+                <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
                   Exercise Videos
                 </Text>
               </View>
 
               {videoUrls.map((url, index) => (
-                <View
-                  key={index}
-                  style={[
-                    styles.videoUrlContainer,
-                    isDark && styles.videoUrlContainerDark,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.videoUrl,
-                      isDark && styles.videoUrlDark,
-                    ]}
-                    numberOfLines={1}
-                  >
+                <View key={index} style={[styles.videoUrlContainer, isDark && styles.videoUrlContainerDark]}>
+                  <Text style={[styles.videoUrl, isDark && styles.videoUrlDark]} numberOfLines={1}>
                     {url}
                   </Text>
                   <View style={styles.videoActions}>
@@ -188,65 +165,6 @@ function ExerciseDetails({ exercise, onClose, onUpdate }: ExerciseDetailsProps) 
           </View>
         </View>
       </View>
-
-      {/* Nested Video Modal */}
-      <Modal
-        visible={!!videoModalUrl}
-        transparent={true}
-        animationType="fade"
-        // Use "overFullScreen" when video is in full-screen mode.
-        presentationStyle={isVideoFullScreen ? "overFullScreen" : "pageSheet"}
-        onRequestClose={() => {
-          setVideoModalUrl(null);
-          setIsVideoFullScreen(false);
-        }}
-      >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.85)',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
-        >
-          {videoModalUrl && !isVideoFullScreen && (
-            <View
-              style={{
-                width: '90%',
-                height: 250,
-                backgroundColor: '#000',
-                borderRadius: 10,
-                overflow: 'hidden',
-              }}
-            >
-              <VideoPlayer
-                url={videoModalUrl}
-                onReturn={() => {
-                  setVideoModalUrl(null);
-                  setIsVideoFullScreen(false);
-                }}
-                onFullScreenChange={(status: boolean) => setIsVideoFullScreen(status)}
-              />
-              <TouchableOpacity
-                onPress={() => {
-                  setVideoModalUrl(null);
-                  setIsVideoFullScreen(false);
-                }}
-                style={{
-                  position: 'absolute',
-                  top: 10,
-                  right: 10,
-                  padding: 8,
-                  backgroundColor: 'rgba(0,0,0,0.6)',
-                  borderRadius: 20,
-                }}
-              >
-                <Text style={{ color: '#FFF' }}>✕</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      </Modal>
     </Modal>
   );
 }
@@ -265,10 +183,7 @@ const styles = StyleSheet.create({
     maxWidth: 500,
     maxHeight: '90%',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,

@@ -5,6 +5,7 @@ import { Exercise } from '../types';
 import { Trash2, Video, FileText } from 'lucide-react-native';
 import { ExerciseDetails } from './ExerciseDetails';
 import { useTheme } from '@/src/context/ThemeContext';
+import { useIsFocused } from '@react-navigation/native';
 
 interface DayScheduleProps {
   date: Date;
@@ -13,9 +14,10 @@ interface DayScheduleProps {
   onUpdateExercise: (exercise: Exercise) => void;
 }
 
-export function DaySchedule({ date, exercises, onRemoveExercise, onUpdateExercise }: DayScheduleProps) {
+function DaySchedule({ date, exercises, onRemoveExercise, onUpdateExercise }: DayScheduleProps) {
   const { isDark } = useTheme();
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
+  const isFocused = useIsFocused();
 
   return (
     <View style={styles.container}>
@@ -43,7 +45,7 @@ export function DaySchedule({ date, exercises, onRemoveExercise, onUpdateExercis
                 </Text>
                 <Text style={[styles.exerciseDetails, isDark && styles.exerciseDetailsDark]}>
                   {exercise.sets} sets × {exercise.reps} reps
-                  {exercise.weight && ` @ ${exercise.weight}kg`}
+                  {exercise.weight && ` @ ${exercise.weight}lbs`}
                 </Text>
                 <View style={styles.indicators}>
                   {exercise.videoUrls && exercise.videoUrls.length > 0 && (
@@ -75,12 +77,12 @@ export function DaySchedule({ date, exercises, onRemoveExercise, onUpdateExercis
         </View>
       )}
 
-      {selectedExercise && (
+      {selectedExercise && isFocused && (
         <ExerciseDetails
           exercise={selectedExercise}
           onClose={() => setSelectedExercise(null)}
-          onUpdate={(updatedExercise) => {
-            onUpdateExercise(updatedExercise);
+          onUpdate={(updated) => {
+            onUpdateExercise(updated);
             setSelectedExercise(null);
           }}
         />
@@ -179,3 +181,5 @@ const styles = StyleSheet.create({
     padding: 8,
   },
 });
+
+export { DaySchedule };

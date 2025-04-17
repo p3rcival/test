@@ -1,6 +1,8 @@
 import React from 'react';
 import {
   format,
+  startOfDay, 
+  isBefore,
   startOfMonth,
   endOfMonth,
   eachDayOfInterval,
@@ -51,7 +53,7 @@ export function Calendar({ selectedDate, workoutSchedule, onSelectDate }: Calend
   };
 
   const handleToday = () => {
-    const today = new Date();
+    const today = startOfDay(new Date());
     setCurrentMonth(startOfMonth(today));
     onSelectDate(today);
   };
@@ -108,7 +110,8 @@ export function Calendar({ selectedDate, workoutSchedule, onSelectDate }: Calend
               return (
                 <TouchableOpacity
                   key={day.toString()}
-                  onPress={() => onSelectDate(day)}
+                  //onPress={() => onSelectDate(day)}
+                  onPress={() => onSelectDate(startOfDay(day))}
                   style={[
                     styles.dayCell,
                     isCurrentDay && [styles.today, isDark && styles.todayDark],
