@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView } from 'react-native';
-import { format, startOfDay, isBefore } from 'date-fns';
+import { format, startOfDay, isBefore, differenceInCalendarDays } from 'date-fns';
 import { Dumbbell } from 'lucide-react-native';
 import { Calendar } from '@/src/components/Calendar';
 import { ExerciseForm } from '@/src/components/ExerciseForm';
@@ -143,8 +143,17 @@ export default function Home() {
 
     // NEW (safe & clear):
     const isPastDate = (date: Date) =>
-      isBefore(startOfDay(date), startOfDay(new Date()));
-  
+      differenceInCalendarDays(date, new Date()) < 0;
+
+    console.log(
+      'select:',
+      selectedDate,
+      'today:',
+      startOfDay(new Date()),
+      'isPast?',
+      isPastDate(selectedDate)
+    );
+    
 
   const handleRemoveExercise = async (exerciseId: string) => {
     if (!user) {
