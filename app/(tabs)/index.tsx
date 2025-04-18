@@ -13,7 +13,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
 import { User } from '@supabase/supabase-js';
 
-
 export default function Home() {
   const { isDark } = useTheme();
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()))
@@ -294,6 +293,9 @@ export default function Home() {
               <View style={[styles.section, isDark && styles.sectionDark]}>
                 <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
                   Add Exercise
+                </Text>
+                <Text style={{fontSize:12, color:'gray'}}>
+                  Debug: isPastDate? {String(isPastDate(selectedDate))}
                 </Text>
                 {/* Only show the form on today or future dates */}
                 {!isPastDate(selectedDate) && (

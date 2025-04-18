@@ -26,6 +26,7 @@ export default ({ config }) => ({
       foregroundImage: "./assets/adaptive-icon.png",
       backgroundColor: "#ffffff"
     },
+    allowBackup: false,
     permissions: [
       "CAMERA",
       "READ_EXTERNAL_STORAGE",
