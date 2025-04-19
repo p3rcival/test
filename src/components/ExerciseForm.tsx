@@ -196,7 +196,9 @@ export function ExerciseForm({ onAddExercise }: ExerciseFormProps) {
   };
   
   return (
-    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
+    <ScrollView 
+    contentContainerStyle={[styles.formContainer, { paddingBottom: 16 }]}
+    keyboardShouldPersistTaps="handled">
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => setShowTemplates(!showTemplates)}
@@ -360,8 +362,7 @@ export function ExerciseForm({ onAddExercise }: ExerciseFormProps) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  formContainer: {
   },
   header: {
     flexDirection: 'row',
