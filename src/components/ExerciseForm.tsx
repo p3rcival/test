@@ -1,21 +1,41 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Keyboard, Alert } from 'react-native';
-import { Exercise } from '../types';
-import { Plus, Video, FileText, Trash2, Save, List } from 'lucide-react-native';
-import { supabase } from '../lib/supabase';
-import Toast from 'react-native-toast-message';
-import { useTheme } from '@/src/context/ThemeContext';
-import uuid from 'react-native-uuid';
-import { User } from '@supabase/supabase-js'; // or wherever your User type is defined
-import { useRouter } from 'expo-router';
+// src/components/ExerciseForm.tsx
+import React, { useState, useEffect } from 'react'
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Keyboard,
+  Alert,
+} from 'react-native'
+import { Exercise } from '@/src/types'
+import {
+  Plus,
+  Video,
+  FileText,
+  Trash2,
+  Save,
+  List,
+} from 'lucide-react-native'
+import { supabase } from '@/src/lib/supabase'
+import Toast from 'react-native-toast-message'
+import { useTheme } from '@/src/context/ThemeContext'
+import uuid from 'react-native-uuid'
+import { User } from '@supabase/supabase-js'
+import { useRouter } from 'expo-router'
 
 interface ExerciseFormProps {
-  onAddExercise: (exercise: Exercise) => void;
+  user: User | null
+  onAddExercise: (ex: Exercise) => void
 }
 
-export function ExerciseForm({ onAddExercise }: ExerciseFormProps) {
-  const router = useRouter();
-  const { isDark } = useTheme();
+export function ExerciseForm({ user, onAddExercise }: ExerciseFormProps) {
+  const router = useRouter()
+  const { isDark } = useTheme()
+
+  // form state
   const [exercise, setExercise] = useState<Omit<Exercise, 'id'>>({
     name: '',
     sets: 3,
@@ -23,109 +43,95 @@ export function ExerciseForm({ onAddExercise }: ExerciseFormProps) {
     weight: undefined,
     videoUrls: [],
     notes: '',
-  });
-  const [newVideoUrl, setNewVideoUrl] = useState('');
-  const [templates, setTemplates] = useState<Exercise[]>([]);
-  const [showTemplates, setShowTemplates] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [isFromTemplate, setIsFromTemplate] = useState(false);
+  })
+  const [newVideoUrl, setNewVideoUrl] = useState('')
+  const [templates, setTemplates] = useState<Exercise[]>([])
+  const [showTemplates, setShowTemplates] = useState(false)
+  const [isFromTemplate, setIsFromTemplate] = useState(false)
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user || null);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
-      if (session?.user) {
-        loadTemplates();
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
+  // load saved templates whenever the parent hands us a user
   useEffect(() => {
     if (user) {
-      loadTemplates();
+      loadTemplates()
+    } else {
+      setTemplates([])
     }
-  }, [user]);
+  }, [user])
 
   async function loadTemplates() {
     const { data, error } = await supabase
       .from('exercise_templates')
       .select('*');
-    
+
     if (error) {
-      console.error('Error loading templates:', error);
-      return;
+      console.error('Error loading templates:', error)
+      return
     }
 
-    const templatesWithVideoUrls = data?.map(template => ({
-      ...template,
-      videoUrls: template.videoUrls || [],
-    })) || [];
-
-    setTemplates(templatesWithVideoUrls);
+    // ensure videoUrls is always an array
+    const withUrls: Exercise[] = data.map(t => ({
+      ...t,
+      videoUrls: Array.isArray(t.videoUrls) ? t.videoUrls : [],
+    }))
+    setTemplates(withUrls)
   }
 
+  // if not signed in, show the prompt
+  if (!user) {
+    return (
+      <TouchableOpacity onPress={() => router.push('/settings')}>
+        <Text style={styles.signInText}>Sign in to save templates</Text>
+      </TouchableOpacity>
+    )
+  }
+
+  // handlers
   const handleAddVideo = () => {
-    if (newVideoUrl && !exercise.videoUrls?.includes(newVideoUrl)) {
+    const currentVideos = exercise.videoUrls ?? [];     // ← never undefined now
+    if (newVideoUrl && !currentVideos.includes(newVideoUrl)) {
       setExercise({
         ...exercise,
-        videoUrls: [...(exercise.videoUrls || []), newVideoUrl],
+        videoUrls: [...currentVideos, newVideoUrl],
       });
       setNewVideoUrl('');
     }
   };
 
   const handleRemoveVideo = (urlToRemove: string) => {
+    const currentVideos = exercise.videoUrls ?? [];
     setExercise({
       ...exercise,
-      videoUrls: exercise.videoUrls?.filter(url => url !== urlToRemove) || [],
+      videoUrls: currentVideos.filter(url => url !== urlToRemove),
     });
   };
 
   const handleSubmit = async () => {
-    Keyboard.dismiss();
-  
-    const newExercise = {
-      ...exercise,
-      id: uuid.v4() as string, // Ensure ID is treated as a string
-    };
-  
-    onAddExercise(newExercise);
-  
-    if (!isFromTemplate && user) {
-      const { error } = await supabase
-        .from('exercise_templates')
-        .insert([{
+    Keyboard.dismiss()
+    const newEx: Exercise = { ...exercise, id: uuid.v4() as string }
+    onAddExercise(newEx)
+
+    if (!isFromTemplate) {
+      const { error } = await supabase.from('exercise_templates').insert([
+        {
           user_id: user.id,
           name: exercise.name,
           sets: exercise.sets,
           reps: exercise.reps,
           weight: exercise.weight,
-          video_urls: exercise.videoUrls || [],
+          video_urls: exercise.videoUrls,
           notes: exercise.notes,
-        }]);
-  
+        },
+      ])
       if (error) {
-        Toast.show({
-          type: 'error',
-          text1: 'Error saving template',
-        });
-        console.error('Error saving template:', error);
+        Toast.show({ type: 'error', text1: 'Error saving template' })
+        console.error(error)
       } else {
-        Toast.show({
-          type: 'success',
-          text1: 'Template saved successfully',
-        });
-        loadTemplates();
+        Toast.show({ type: 'success', text1: 'Template saved' })
+        loadTemplates()
       }
     }
-  
+
+    // reset form
     setExercise({
       name: '',
       sets: 3,
@@ -133,111 +139,109 @@ export function ExerciseForm({ onAddExercise }: ExerciseFormProps) {
       weight: undefined,
       videoUrls: [],
       notes: '',
-    });
-    setNewVideoUrl('');
-    setIsFromTemplate(false);
-  };
-  
+    })
+    setNewVideoUrl('')
+    setIsFromTemplate(false)
+  }
 
-  const handleSelectTemplate = (template: Exercise) => {
-    const videoUrls = Array.isArray(template.videoUrls) 
-      ? template.videoUrls 
-      : Array.isArray(template.videoUrls) 
-        ? template.videoUrls 
-        : [];
-
+  const handleSelectTemplate = (tpl: Exercise) => {
     setExercise({
-      name: template.name,
-      sets: template.sets,
-      reps: template.reps,
-      weight: template.weight,
-      videoUrls: videoUrls,
-      notes: template.notes || '',
-    });
-    setIsFromTemplate(true);
-    setShowTemplates(false);
-  };
+      name: tpl.name,
+      sets: tpl.sets,
+      reps: tpl.reps,
+      weight: tpl.weight,
+      videoUrls: tpl.videoUrls,
+      notes: tpl.notes,
+    })
+    setIsFromTemplate(true)
+    setShowTemplates(false)
+  }
 
-  const handleDeleteTemplate = async (templateId: string) => {
+  const handleDeleteTemplate = async (tplId: string) => {
     Alert.alert(
       'Delete Template',
-      'Are you sure you want to delete this template?',
+      'Really delete this template?',
       [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
+          style: 'destructive',
           onPress: async () => {
             const { error } = await supabase
               .from('exercise_templates')
               .delete()
-              .eq('id', templateId);
-  
+              .eq('id', tplId)
             if (error) {
-              Toast.show({
-                type: 'error',
-                text1: 'Error deleting template',
-              });
-              console.error('Error deleting template:', error);
+              Toast.show({ type: 'error', text1: 'Error deleting template' })
+              console.error(error)
             } else {
-              Toast.show({
-                type: 'success',
-                text1: 'Template deleted successfully',
-              });
-              loadTemplates();
+              Toast.show({ type: 'success', text1: 'Template deleted' })
+              loadTemplates()
             }
           },
         },
       ],
       { cancelable: true }
-    );
-  };
-  
+    )
+  }
+
   return (
-    <ScrollView 
-    contentContainerStyle={[styles.formContainer, { paddingBottom: 16 }]}
-    keyboardShouldPersistTaps="handled">
+    <ScrollView
+      contentContainerStyle={[styles.formContainer, { paddingBottom: 16 }]}
+      keyboardShouldPersistTaps="handled"
+    >
+      {/* Header: show/hide templates */}
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => setShowTemplates(!showTemplates)}
+          onPress={() => setShowTemplates(v => !v)}
           style={[styles.templateButton, isDark && styles.templateButtonDark]}
         >
           <List size={16} color={isDark ? '#D1D5DB' : '#4B5563'} />
-          <Text style={[styles.templateButtonText, isDark && styles.templateButtonTextDark]}>
+          <Text
+            style={[
+              styles.templateButtonText,
+              isDark && styles.templateButtonTextDark,
+            ]}
+          >
             {showTemplates ? 'Hide Templates' : 'Show Templates'}
           </Text>
         </TouchableOpacity>
-        {!user && (
-          <TouchableOpacity onPress={() => router.push('/settings')}>
-            <Text style={styles.signInText}>Sign in to save templates</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
+      {/* Templates list */}
       {showTemplates && templates.length > 0 && (
-        <View style={[styles.templatesContainer, isDark && styles.templatesContainerDark]}>
-          <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+        <View
+          style={[styles.templatesContainer, isDark && styles.templatesContainerDark]}
+        >
+          <Text
+            style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}
+          >
             Saved Templates
           </Text>
-          {templates.map((template) => (
+          {templates.map(tpl => (
             <TouchableOpacity
-              key={template.id}
+              key={tpl.id}
+              onPress={() => handleSelectTemplate(tpl)}
               style={[styles.templateItem, isDark && styles.templateItemDark]}
-              onPress={() => handleSelectTemplate(template)}
             >
               <View>
-                <Text style={[styles.templateName, isDark && styles.templateNameDark]}>
-                  {template.name}
+                <Text
+                  style={[styles.templateName, isDark && styles.templateNameDark]}
+                >
+                  {tpl.name}
                 </Text>
-                <Text style={[styles.templateDetails, isDark && styles.templateDetailsDark]}>
-                  {template.sets} sets × {template.reps} reps
-                  {template.weight && ` @ ${template.weight}kg`}
+                <Text
+                  style={[
+                    styles.templateDetails,
+                    isDark && styles.templateDetailsDark,
+                  ]}
+                >
+                  {tpl.sets} sets × {tpl.reps} reps
+                  {tpl.weight ? ` @ ${tpl.weight}kg` : ''}
                 </Text>
               </View>
               <TouchableOpacity
-                onPress={() => handleDeleteTemplate(template.id)}
+                onPress={() => handleDeleteTemplate(tpl.id)}
                 style={styles.deleteButton}
               >
                 <Trash2 size={18} color="#EF4444" />
@@ -247,47 +251,67 @@ export function ExerciseForm({ onAddExercise }: ExerciseFormProps) {
         </View>
       )}
 
+      {/* Actual form inputs */}
       <View style={styles.form}>
+        {/* Exercise Name */}
         <View style={styles.formGroup}>
-          <Text style={[styles.label, isDark && styles.labelDark]}>Exercise Name</Text>
+          <Text style={[styles.label, isDark && styles.labelDark]}>
+            Exercise Name
+          </Text>
           <TextInput
             style={[styles.input, isDark && styles.inputDark]}
             value={exercise.name}
-            onChangeText={(text) => setExercise({ ...exercise, name: text })}
+            onChangeText={text => setExercise({ ...exercise, name: text })}
             placeholder="Enter exercise name"
             placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
           />
         </View>
 
+        {/* Sets / Reps / Weight */}
         <View style={styles.row}>
           <View style={[styles.formGroup, styles.flex1]}>
-            <Text style={[styles.label, isDark && styles.labelDark]}>Sets</Text>
+            <Text style={[styles.label, isDark && styles.labelDark]}>
+              Sets
+            </Text>
             <TextInput
               style={[styles.input, isDark && styles.inputDark]}
               value={String(exercise.sets)}
-              onChangeText={(text) => setExercise({ ...exercise, sets: parseInt(text) || 0 })}
+              onChangeText={text =>
+                setExercise({ ...exercise, sets: parseInt(text) || 0 })
+              }
               keyboardType="numeric"
               placeholder="3"
               placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
             />
           </View>
           <View style={[styles.formGroup, styles.flex1]}>
-            <Text style={[styles.label, isDark && styles.labelDark]}>Reps</Text>
+            <Text style={[styles.label, isDark && styles.labelDark]}>
+              Reps
+            </Text>
             <TextInput
               style={[styles.input, isDark && styles.inputDark]}
               value={String(exercise.reps)}
-              onChangeText={(text) => setExercise({ ...exercise, reps: parseInt(text) || 0 })}
+              onChangeText={text =>
+                setExercise({ ...exercise, reps: parseInt(text) || 0 })
+              }
               keyboardType="numeric"
               placeholder="10"
               placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
             />
           </View>
           <View style={[styles.formGroup, styles.flex1]}>
-            <Text style={[styles.label, isDark && styles.labelDark]}>Weight (lb)</Text>
+            <Text style={[styles.label, isDark && styles.labelDark]}>
+              Weight (lb)
+            </Text>
             <TextInput
               style={[styles.input, isDark && styles.inputDark]}
               value={exercise.weight?.toString() || ''}
-              onChangeText={(text) => setExercise({ ...exercise, weight: parseFloat(text) || undefined })}
+              onChangeText={text =>
+                setExercise({
+                  ...exercise,
+                  weight: parseFloat(text) || undefined,
+                })
+              }
               keyboardType="numeric"
               placeholder="Optional"
               placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
@@ -295,15 +319,27 @@ export function ExerciseForm({ onAddExercise }: ExerciseFormProps) {
           </View>
         </View>
 
+        {/* Videos */}
         <View style={styles.formGroup}>
           <View style={styles.labelContainer}>
             <Video size={16} color={isDark ? '#D1D5DB' : '#4B5563'} />
-            <Text style={[styles.label, isDark && styles.labelDark]}>Exercise Videos</Text>
+            <Text style={[styles.label, isDark && styles.labelDark]}>
+              Exercise Videos
+            </Text>
           </View>
-          
-          {exercise.videoUrls?.map((url, index) => (
-            <View key={index} style={[styles.videoUrlContainer, isDark && styles.videoUrlContainerDark]}>
-              <Text style={[styles.videoUrl, isDark && styles.videoUrlDark]} numberOfLines={1}>
+
+          {(exercise.videoUrls ?? []).map((url, index) => (
+            <View
+              key={index}
+              style={[
+                styles.videoUrlContainer,
+                isDark && styles.videoUrlContainerDark,
+              ]}
+            >
+              <Text
+                style={[styles.videoUrl, isDark && styles.videoUrlDark]}
+                numberOfLines={1}
+              >
                 {url}
               </Text>
               <TouchableOpacity
@@ -314,7 +350,7 @@ export function ExerciseForm({ onAddExercise }: ExerciseFormProps) {
               </TouchableOpacity>
             </View>
           ))}
-          
+
           <View style={styles.addVideoContainer}>
             <TextInput
               style={[styles.input, styles.flex1, isDark && styles.inputDark]}
@@ -323,24 +359,24 @@ export function ExerciseForm({ onAddExercise }: ExerciseFormProps) {
               placeholder="https://youtube.com/watch?v=..."
               placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
             />
-            <TouchableOpacity
-              onPress={handleAddVideo}
-              style={styles.addButton}
-            >
-              <Plus size={18} color="#FFFFFF" />
+            <TouchableOpacity onPress={handleAddVideo} style={styles.addButton}>
+              <Plus size={18} color="#FFF" />
             </TouchableOpacity>
           </View>
         </View>
 
+        {/* Notes */}
         <View style={styles.formGroup}>
           <View style={styles.labelContainer}>
             <FileText size={16} color={isDark ? '#D1D5DB' : '#4B5563'} />
-            <Text style={[styles.label, isDark && styles.labelDark]}>Technique Notes</Text>
+            <Text style={[styles.label, isDark && styles.labelDark]}>
+              Technique Notes
+            </Text>
           </View>
           <TextInput
             style={[styles.input, styles.textArea, isDark && styles.inputDark]}
             value={exercise.notes}
-            onChangeText={(text) => setExercise({ ...exercise, notes: text })}
+            onChangeText={text => setExercise({ ...exercise, notes: text })}
             placeholder="Add your technique notes here..."
             placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
             multiline
@@ -348,22 +384,19 @@ export function ExerciseForm({ onAddExercise }: ExerciseFormProps) {
             textAlignVertical="top"
           />
         </View>
-
-        <TouchableOpacity
-          onPress={handleSubmit}
-          style={styles.submitButton}
-        >
-          <Save size={16} color="#FFFFFF" />
-          <Text style={styles.submitButtonText}>Save Exercise</Text>
-        </TouchableOpacity>
       </View>
+
+      {/* Save button */}
+      <TouchableOpacity onPress={handleSubmit} style={styles.submitButton}>
+        <Save size={16} color="#FFF" />
+        <Text style={styles.submitButtonText}>Save Exercise</Text>
+      </TouchableOpacity>
     </ScrollView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
-  formContainer: {
-  },
+  formContainer: {},
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -418,7 +451,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF',
     borderRadius: 8,
     marginBottom: 8,
   },
@@ -473,7 +506,7 @@ const styles = StyleSheet.create({
     color: '#D1D5DB',
   },
   input: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF',
     borderWidth: 1,
     borderColor: '#D1D5DB',
     borderRadius: 8,
@@ -535,9 +568,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   submitButtonText: {
-    color: '#FFFFFF',
+    color: '#FFF',
     fontSize: 16,
     marginLeft: 8,
     fontFamily: 'Inter-Bold',
   },
-});
+})
