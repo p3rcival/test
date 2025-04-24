@@ -10,6 +10,7 @@ import { supabase } from './lib/supabase';
 import { Auth } from './components/Auth';
 import { User } from '@supabase/supabase-js'; // or wherever your User type is defined
 import { useTheme } from '@/src/context/ThemeContext';
+import { toast } from 'react-hot-toast';
 
 function App() {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -112,53 +113,56 @@ function App() {
     }
   };
 
-  const handleRemoveExercise = async (exerciseId: string) => {
-    if (!user) {
-      //toast.error('Please sign in to modify workouts');
-      setShowAuth(true);
-      return;
+const handleRemoveExercise = async (exerciseId: string) => {
+  if (!user) {
+    toast.error('Please sign in to modify workouts')
+    return
+  }
+
+  const updatedExercises = (daySchedule.exercises as Exercise[])
+    .filter(e => e.id !== exerciseId)
+
+  // If that was the last one, delete the dateKey entirely...
+  if (updatedExercises.length === 0) {
+    // 1) remove the key locally
+    setWorkoutSchedule(prev => {
+      const copy = { ...prev }
+      delete copy[dateKey]
+      return copy
+    })
+
+    // 2) delete from Supabase
+    const { error } = await supabase
+      .from('workout_schedules')
+      .delete()
+      .match({ user_id: user.id, date: dateKey })
+
+    if (error) {
+      console.error(error)
+      toast.error('Failed to delete workout')
     }
 
-    const updatedExercises = daySchedule.exercises.filter((e) => e.id !== exerciseId);
-    const updatedSchedule = {
-      ...workoutSchedule,
-      [dateKey]: {
-        date: dateKey,
-        exercises: updatedExercises,
-      },
-    };
+  } else {
+    // still have exercises: update locally & in Supabase as before
+    setWorkoutSchedule(prev => ({
+      ...prev,
+      [dateKey]: { date: dateKey, exercises: updatedExercises },
+    }))
 
-    setWorkoutSchedule(updatedSchedule);
+    const { error } = await supabase
+      .from('workout_schedules')
+      .upsert(
+        { user_id: user.id, date: dateKey, exercises: updatedExercises },
+        { onConflict: 'user_id,date' }
+      )
 
-    if (updatedExercises.length === 0) {
-      // Delete the schedule if there are no exercises
-      const { error } = await supabase
-        .from('workout_schedules')
-        .delete()
-        .match({ user_id: user.id, date: dateKey });
-
-      if (error) {
-        //toast.error('Failed to delete workout');
-        console.error('Error deleting workout:', error);
-      }
-    } else {
-      // Update the schedule with the remaining exercises
-      const { error } = await supabase
-        .from('workout_schedules')
-        .upsert({
-          user_id: user.id,
-          date: dateKey,
-          exercises: updatedExercises,
-        }, {
-          onConflict: 'user_id,date'
-        });
-
-      if (error) {
-        //toast.error('Failed to update workout');
-        console.error('Error updating workout:', error);
-      }
+    if (error) {
+      console.error(error)
+      toast.error('Failed to update workout')
     }
-  };
+  }
+}
+
 
   const handleUpdateExercise = async (updatedExercise: Exercise) => {
     if (!user) {
@@ -256,7 +260,7 @@ function App() {
 
             <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
               <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Add Exercise</h2>
-              <ExerciseForm onAddExercise={handleAddExercise} />
+              <ExerciseForm user={user} onAddExercise={handleAddExercise} />
             </div>
           </>
         )}

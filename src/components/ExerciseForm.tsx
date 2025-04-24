@@ -9,6 +9,9 @@ import {
   ScrollView,
   Keyboard,
   Alert,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Platform,
 } from 'react-native'
 import { Exercise } from '@/src/types'
 import {
@@ -61,18 +64,23 @@ export function ExerciseForm({ user, onAddExercise }: ExerciseFormProps) {
   async function loadTemplates() {
     const { data, error } = await supabase
       .from('exercise_templates')
-      .select('*');
+      .select('id, user_id, name, sets, reps, weight, video_urls, notes')
 
     if (error) {
       console.error('Error loading templates:', error)
       return
     }
 
-    // ensure videoUrls is always an array
-    const withUrls: Exercise[] = data.map(t => ({
-      ...t,
-      videoUrls: Array.isArray(t.videoUrls) ? t.videoUrls : [],
+    const withUrls: Exercise[] = data.map((tpl: any) => ({
+      id: tpl.id,
+      name: tpl.name,
+      sets: tpl.sets,
+      reps: tpl.reps,
+      weight: tpl.weight,
+      notes: tpl.notes ?? '',
+      videoUrls: Array.isArray(tpl.video_urls) ? tpl.video_urls : [],
     }))
+
     setTemplates(withUrls)
   }
 
@@ -87,23 +95,23 @@ export function ExerciseForm({ user, onAddExercise }: ExerciseFormProps) {
 
   // handlers
   const handleAddVideo = () => {
-    const currentVideos = exercise.videoUrls ?? [];     // ← never undefined now
+    const currentVideos = exercise.videoUrls ?? []
     if (newVideoUrl && !currentVideos.includes(newVideoUrl)) {
       setExercise({
         ...exercise,
         videoUrls: [...currentVideos, newVideoUrl],
-      });
-      setNewVideoUrl('');
+      })
+      setNewVideoUrl('')
     }
-  };
+  }
 
   const handleRemoveVideo = (urlToRemove: string) => {
-    const currentVideos = exercise.videoUrls ?? [];
+    const currentVideos = exercise.videoUrls ?? []
     setExercise({
       ...exercise,
       videoUrls: currentVideos.filter(url => url !== urlToRemove),
-    });
-  };
+    })
+  }
 
   const handleSubmit = async () => {
     Keyboard.dismiss()
@@ -122,6 +130,7 @@ export function ExerciseForm({ user, onAddExercise }: ExerciseFormProps) {
           notes: exercise.notes,
         },
       ])
+
       if (error) {
         Toast.show({ type: 'error', text1: 'Error saving template' })
         console.error(error)
@@ -186,212 +195,220 @@ export function ExerciseForm({ user, onAddExercise }: ExerciseFormProps) {
   }
 
   return (
-    <ScrollView
-      contentContainerStyle={[styles.formContainer, { paddingBottom: 16 }]}
-      keyboardShouldPersistTaps="handled"
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'android' ? 'height' : 'padding'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 16}
     >
-      {/* Header: show/hide templates */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => setShowTemplates(v => !v)}
-          style={[styles.templateButton, isDark && styles.templateButtonDark]}
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <ScrollView
+          contentContainerStyle={[styles.formContainer, { paddingBottom: 16 }]}
+          keyboardShouldPersistTaps="handled"
         >
-          <List size={16} color={isDark ? '#D1D5DB' : '#4B5563'} />
-          <Text
-            style={[
-              styles.templateButtonText,
-              isDark && styles.templateButtonTextDark,
-            ]}
-          >
-            {showTemplates ? 'Hide Templates' : 'Show Templates'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Templates list */}
-      {showTemplates && templates.length > 0 && (
-        <View
-          style={[styles.templatesContainer, isDark && styles.templatesContainerDark]}
-        >
-          <Text
-            style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}
-          >
-            Saved Templates
-          </Text>
-          {templates.map(tpl => (
+          {/* Header: show/hide templates */}
+          <View style={styles.header}>
             <TouchableOpacity
-              key={tpl.id}
-              onPress={() => handleSelectTemplate(tpl)}
-              style={[styles.templateItem, isDark && styles.templateItemDark]}
+              onPress={() => setShowTemplates(v => !v)}
+              style={[styles.templateButton, isDark && styles.templateButtonDark]}
             >
-              <View>
-                <Text
-                  style={[styles.templateName, isDark && styles.templateNameDark]}
-                >
-                  {tpl.name}
-                </Text>
-                <Text
-                  style={[
-                    styles.templateDetails,
-                    isDark && styles.templateDetailsDark,
-                  ]}
-                >
-                  {tpl.sets} sets × {tpl.reps} reps
-                  {tpl.weight ? ` @ ${tpl.weight}kg` : ''}
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => handleDeleteTemplate(tpl.id)}
-                style={styles.deleteButton}
+              <List size={16} color={isDark ? '#D1D5DB' : '#4B5563'} />
+              <Text
+                style={[
+                  styles.templateButtonText,
+                  isDark && styles.templateButtonTextDark,
+                ]}
               >
-                <Trash2 size={18} color="#EF4444" />
-              </TouchableOpacity>
+                {showTemplates ? 'Hide Templates' : 'Show Templates'}
+              </Text>
             </TouchableOpacity>
-          ))}
-        </View>
-      )}
-
-      {/* Actual form inputs */}
-      <View style={styles.form}>
-        {/* Exercise Name */}
-        <View style={styles.formGroup}>
-          <Text style={[styles.label, isDark && styles.labelDark]}>
-            Exercise Name
-          </Text>
-          <TextInput
-            style={[styles.input, isDark && styles.inputDark]}
-            value={exercise.name}
-            onChangeText={text => setExercise({ ...exercise, name: text })}
-            placeholder="Enter exercise name"
-            placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
-          />
-        </View>
-
-        {/* Sets / Reps / Weight */}
-        <View style={styles.row}>
-          <View style={[styles.formGroup, styles.flex1]}>
-            <Text style={[styles.label, isDark && styles.labelDark]}>
-              Sets
-            </Text>
-            <TextInput
-              style={[styles.input, isDark && styles.inputDark]}
-              value={String(exercise.sets)}
-              onChangeText={text =>
-                setExercise({ ...exercise, sets: parseInt(text) || 0 })
-              }
-              keyboardType="numeric"
-              placeholder="3"
-              placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
-            />
-          </View>
-          <View style={[styles.formGroup, styles.flex1]}>
-            <Text style={[styles.label, isDark && styles.labelDark]}>
-              Reps
-            </Text>
-            <TextInput
-              style={[styles.input, isDark && styles.inputDark]}
-              value={String(exercise.reps)}
-              onChangeText={text =>
-                setExercise({ ...exercise, reps: parseInt(text) || 0 })
-              }
-              keyboardType="numeric"
-              placeholder="10"
-              placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
-            />
-          </View>
-          <View style={[styles.formGroup, styles.flex1]}>
-            <Text style={[styles.label, isDark && styles.labelDark]}>
-              Weight (lb)
-            </Text>
-            <TextInput
-              style={[styles.input, isDark && styles.inputDark]}
-              value={exercise.weight?.toString() || ''}
-              onChangeText={text =>
-                setExercise({
-                  ...exercise,
-                  weight: parseFloat(text) || undefined,
-                })
-              }
-              keyboardType="numeric"
-              placeholder="Optional"
-              placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
-            />
-          </View>
-        </View>
-
-        {/* Videos */}
-        <View style={styles.formGroup}>
-          <View style={styles.labelContainer}>
-            <Video size={16} color={isDark ? '#D1D5DB' : '#4B5563'} />
-            <Text style={[styles.label, isDark && styles.labelDark]}>
-              Exercise Videos
-            </Text>
           </View>
 
-          {(exercise.videoUrls ?? []).map((url, index) => (
+          {/* Templates list */}
+          {showTemplates && templates.length > 0 && (
             <View
-              key={index}
-              style={[
-                styles.videoUrlContainer,
-                isDark && styles.videoUrlContainerDark,
-              ]}
+              style={[styles.templatesContainer, isDark && styles.templatesContainerDark]}
             >
               <Text
-                style={[styles.videoUrl, isDark && styles.videoUrlDark]}
-                numberOfLines={1}
+                style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}
               >
-                {url}
+                Saved Templates
               </Text>
-              <TouchableOpacity
-                onPress={() => handleRemoveVideo(url)}
-                style={styles.removeButton}
-              >
-                <Trash2 size={18} color="#EF4444" />
-              </TouchableOpacity>
+              {templates.map(tpl => (
+                <TouchableOpacity
+                  key={tpl.id}
+                  onPress={() => handleSelectTemplate(tpl)}
+                  style={[styles.templateItem, isDark && styles.templateItemDark]}
+                >
+                  <View>
+                    <Text
+                      style={[styles.templateName, isDark && styles.templateNameDark]}
+                    >
+                      {tpl.name}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.templateDetails,
+                        isDark && styles.templateDetailsDark,
+                      ]}
+                    >
+                      {tpl.sets} sets × {tpl.reps} reps
+                      {tpl.weight ? ` @ ${tpl.weight}kg` : ''}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleDeleteTemplate(tpl.id)}
+                    style={styles.deleteButton}
+                  >
+                    <Trash2 size={18} color="#EF4444" />
+                  </TouchableOpacity>
+                </TouchableOpacity>
+              ))}
             </View>
-          ))}
+          )}
 
-          <View style={styles.addVideoContainer}>
-            <TextInput
-              style={[styles.input, styles.flex1, isDark && styles.inputDark]}
-              value={newVideoUrl}
-              onChangeText={setNewVideoUrl}
-              placeholder="https://youtube.com/watch?v=..."
-              placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
-            />
-            <TouchableOpacity onPress={handleAddVideo} style={styles.addButton}>
-              <Plus size={18} color="#FFF" />
+          {/* Actual form inputs */}
+          <View style={styles.form}>
+            {/* Exercise Name */}
+            <View style={styles.formGroup}>
+              <Text style={[styles.label, isDark && styles.labelDark]}>
+                Exercise Name
+              </Text>
+              <TextInput
+                style={[styles.input, isDark && styles.inputDark]}
+                value={exercise.name}
+                onChangeText={text => setExercise({ ...exercise, name: text })}
+                placeholder="Enter exercise name"
+                placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
+              />
+            </View>
+
+            {/* Sets / Reps / Weight */}
+            <View style={styles.row}>
+              <View style={[styles.formGroup, styles.flex1]}>
+                <Text style={[styles.label, isDark && styles.labelDark]}>
+                  Sets
+                </Text>
+                <TextInput
+                  style={[styles.input, isDark && styles.inputDark]}
+                  value={String(exercise.sets)}
+                  onChangeText={text =>
+                    setExercise({ ...exercise, sets: parseInt(text) || 0 })
+                  }
+                  keyboardType="numeric"
+                  placeholder="3"
+                  placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
+                />
+              </View>
+              <View style={[styles.formGroup, styles.flex1]}>
+                <Text style={[styles.label, isDark && styles.labelDark]}>
+                  Reps
+                </Text>
+                <TextInput
+                  style={[styles.input, isDark && styles.inputDark]}
+                  value={String(exercise.reps)}
+                  onChangeText={text =>
+                    setExercise({ ...exercise, reps: parseInt(text) || 0 })
+                  }
+                  keyboardType="numeric"
+                  placeholder="10"
+                  placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
+                />
+              </View>
+              <View style={[styles.formGroup, styles.flex1]}>
+                <Text style={[styles.label, isDark && styles.labelDark]}>
+                  Weight (lb)
+                </Text>
+                <TextInput
+                  style={[styles.input, isDark && styles.inputDark]}
+                  value={exercise.weight?.toString() || ''}
+                  onChangeText={text =>
+                    setExercise({
+                      ...exercise,
+                      weight: parseFloat(text) || undefined,
+                    })
+                  }
+                  keyboardType="numeric"
+                  placeholder="Optional"
+                  placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
+                />
+              </View>
+            </View>
+
+            {/* Videos */}
+            <View style={styles.formGroup}>
+              <View style={styles.labelContainer}>
+                <Video size={16} color={isDark ? '#D1D5DB' : '#4B5563'} />
+                <Text style={[styles.label, isDark && styles.labelDark]}>
+                  Exercise Videos
+                </Text>
+              </View>
+
+              {(exercise.videoUrls ?? []).map((url, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.videoUrlContainer,
+                    isDark && styles.videoUrlContainerDark,
+                  ]}
+                >
+                  <Text
+                    style={[styles.videoUrl, isDark && styles.videoUrlDark]}
+                    numberOfLines={1}
+                  >
+                    {url}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => handleRemoveVideo(url)}
+                    style={styles.removeButton}
+                  >
+                    <Trash2 size={18} color="#EF4444" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+
+              <View style={styles.addVideoContainer}>
+                <TextInput
+                  style={[styles.input, styles.flex1, isDark && styles.inputDark]}
+                  value={newVideoUrl}
+                  onChangeText={setNewVideoUrl}
+                  placeholder="https://youtube.com/watch?v=..."
+                  placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
+                />
+                <TouchableOpacity onPress={handleAddVideo} style={styles.addButton}>
+                  <Plus size={18} color="#FFF" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Notes */}
+            <View style={styles.formGroup}>
+              <View style={styles.labelContainer}>
+                <FileText size={16} color={isDark ? '#D1D5DB' : '#4B5563'} />
+                <Text style={[styles.label, isDark && styles.labelDark]}>
+                  Technique Notes
+                </Text>
+              </View>
+              <TextInput
+                style={[styles.input, styles.textArea, isDark && styles.inputDark]}
+                value={exercise.notes}
+                onChangeText={text => setExercise({ ...exercise, notes: text })}
+                placeholder="Add your technique notes here..."
+                placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </View>
+
+            {/* Save button */}
+            <TouchableOpacity onPress={handleSubmit} style={styles.submitButton}>
+              <Save size={16} color="#FFF" />
+              <Text style={styles.submitButtonText}>Save Exercise</Text>
             </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Notes */}
-        <View style={styles.formGroup}>
-          <View style={styles.labelContainer}>
-            <FileText size={16} color={isDark ? '#D1D5DB' : '#4B5563'} />
-            <Text style={[styles.label, isDark && styles.labelDark]}>
-              Technique Notes
-            </Text>
-          </View>
-          <TextInput
-            style={[styles.input, styles.textArea, isDark && styles.inputDark]}
-            value={exercise.notes}
-            onChangeText={text => setExercise({ ...exercise, notes: text })}
-            placeholder="Add your technique notes here..."
-            placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-          />
-        </View>
-      </View>
-
-      {/* Save button */}
-      <TouchableOpacity onPress={handleSubmit} style={styles.submitButton}>
-        <Save size={16} color="#FFF" />
-        <Text style={styles.submitButtonText}>Save Exercise</Text>
-      </TouchableOpacity>
-    </ScrollView>
+            </View>
+          </ScrollView>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
   )
 }
 

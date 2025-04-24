@@ -1,91 +1,89 @@
-import React, { useState } from 'react';
+// src/components/ExerciseDetails.tsx
+import React, { useState } from 'react'
 import {
+  Modal,
+  Pressable,
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  Modal,
   ScrollView,
-} from 'react-native';
-import { Exercise } from '../types';
-import { X, Video, FileText, Plus, Trash2, Play } from 'lucide-react-native';
-import { useTheme } from '@/src/context/ThemeContext';
-import { useRouter } from 'expo-router';
-import extractYoutubeVideoId from '../../utils/extractYoutubeVideoId';
+  StyleSheet,
+} from 'react-native'
+import { X, Video, FileText, Plus, Trash2, Play } from 'lucide-react-native'
+import { useTheme } from '@/src/context/ThemeContext'
+import { useRouter } from 'expo-router'
+import extractYoutubeVideoId from '../../utils/extractYoutubeVideoId'
+import { Exercise } from '../types'
 
 interface ExerciseDetailsProps {
-  exercise: Exercise;
-  onClose: () => void;
-  onUpdate: (updatedExercise: Exercise) => void;
-  modalVisible: boolean;
+  exercise: Exercise
+  visible: boolean             // renamed from modalVisible
+  onClose: () => void
+  onUpdate: (updated: Exercise) => void
 }
 
-function ExerciseDetails({ exercise, onClose, onUpdate, modalVisible }: ExerciseDetailsProps) {
-  const { isDark } = useTheme();
-  const [videoUrls, setVideoUrls] = useState<string[]>(exercise.videoUrls || []);
-  const [newVideoUrl, setNewVideoUrl] = useState('');
-  const [notes, setNotes] = useState(exercise.notes || '');
-  const router = useRouter();
+export function ExerciseDetails({
+  exercise,
+  visible,
+  onClose,
+  onUpdate,
+}: ExerciseDetailsProps) {
+  const { isDark } = useTheme()
+  const router = useRouter()
+
+  const [videoUrls, setVideoUrls] = useState<string[]>(exercise.videoUrls ?? [])
+  const [newVideoUrl, setNewVideoUrl] = useState('')
+  const [notes, setNotes] = useState(exercise.notes ?? '')
 
   const handleAddVideo = () => {
     if (newVideoUrl && !videoUrls.includes(newVideoUrl)) {
-      setVideoUrls([...videoUrls, newVideoUrl]);
-      setNewVideoUrl('');
+      setVideoUrls(v => [...v, newVideoUrl])
+      setNewVideoUrl('')
     }
-  };
+  }
+  const handleRemoveVideo = (url: string) =>
+    setVideoUrls(v => v.filter(u => u !== url))
+  const handleSubmit = () =>
+    onUpdate({ ...exercise, videoUrls, notes })
 
-  const handleRemoveVideo = (urlToRemove: string) => {
-    setVideoUrls(videoUrls.filter(url => url !== urlToRemove));
-  };
-
-  const handleSubmit = () => {
-    onUpdate({
-      ...exercise,
-      videoUrls,
-      notes,
-    });
-  };
-
-  const handlePlayVideo = (url: string) => {
-    const videoId = extractYoutubeVideoId(url);
-    if (videoId) {
-      console.log('ExerciseDetails: play pressed for video URL:', url);
-      // Dismiss the modal (this should update modalVisible in the parent)
-      //onClose();
-      // Navigate to the dedicated video screen.
-      router.push(`/video/${videoId}`);
-    } else {
-      console.error('ExerciseDetails: Invalid video URL:', url);
-    }
-  };
+  const handlePlay = (url: string) => {
+    const vid = extractYoutubeVideoId(url)
+    if (vid) router.push(`/video/${vid}`)
+    else console.error('Invalid video URL:', url)
+  }
 
   return (
     <Modal
       animationType="slide"
-      transparent={true}
-      visible={modalVisible} // Controlled by parent
+      transparent
+      visible={visible}
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
-        <View style={[styles.modalContent, isDark && styles.modalContentDark]}>
+      {/* outer overlay: closes when you tap outside */}
+      <Pressable style={styles.modalOverlay} onPress={onClose}>
+        {/* inner box: swallows taps so it doesn’t close */}
+        <Pressable onPress={() => {}} style={[styles.modalContent, isDark && styles.modalContentDark]}>
+          {/* header */}
           <View style={[styles.header, isDark && styles.headerDark]}>
             <Text style={[styles.title, isDark && styles.titleDark]}>
               {exercise.name}
             </Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <X size={24} color={isDark ? '#9CA3AF' : '#6B7280'} />
+              <X size={24} color={isDark ? '#D1D5DB' : '#6B7280'} />
             </TouchableOpacity>
           </View>
 
+          {/* body */}
           <ScrollView style={styles.content}>
+            {/* stats */}
             <View style={[styles.exerciseInfo, isDark && styles.exerciseInfoDark]}>
               <Text style={[styles.exerciseDetails, isDark && styles.exerciseDetailsDark]}>
-                {exercise.sets} sets × {exercise.reps} reps
-                {exercise.weight && ` @ ${exercise.weight}kg`}
+                {exercise.sets}×{exercise.reps} {exercise.weight ? `@ ${exercise.weight}kg` : ''}
               </Text>
             </View>
 
+            {/* videos */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Video size={16} color={isDark ? '#D1D5DB' : '#4B5563'} />
@@ -93,29 +91,24 @@ function ExerciseDetails({ exercise, onClose, onUpdate, modalVisible }: Exercise
                   Exercise Videos
                 </Text>
               </View>
-
-              {videoUrls.map((url, index) => (
-                <View key={index} style={[styles.videoUrlContainer, isDark && styles.videoUrlContainerDark]}>
+              {videoUrls.map((url, i) => (
+                <View
+                key={i}
+                style={[styles.videoUrlContainer, isDark && styles.videoUrlContainerDark]}
+              >
                   <Text style={[styles.videoUrl, isDark && styles.videoUrlDark]} numberOfLines={1}>
                     {url}
                   </Text>
                   <View style={styles.videoActions}>
-                    <TouchableOpacity
-                      onPress={() => handlePlayVideo(url)}
-                      style={styles.playButton}
-                    >
+                    <TouchableOpacity onPress={() => handlePlay(url)} style={styles.playButton}>
                       <Play size={18} color={isDark ? '#60A5FA' : '#3B82F6'} />
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => handleRemoveVideo(url)}
-                      style={styles.removeButton}
-                    >
+                    <TouchableOpacity onPress={() => handleRemoveVideo(url)} style={styles.removeButton}>
                       <Trash2 size={18} color="#EF4444" />
                     </TouchableOpacity>
                   </View>
                 </View>
               ))}
-
               <View style={styles.addVideoContainer}>
                 <TextInput
                   style={[styles.input, styles.flex1, isDark && styles.inputDark]}
@@ -125,11 +118,12 @@ function ExerciseDetails({ exercise, onClose, onUpdate, modalVisible }: Exercise
                   placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
                 />
                 <TouchableOpacity onPress={handleAddVideo} style={styles.addButton}>
-                  <Plus size={18} color="#FFFFFF" />
+                  <Plus size={18} color="#FFF" />
                 </TouchableOpacity>
               </View>
             </View>
 
+            {/* notes */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <FileText size={16} color={isDark ? '#D1D5DB' : '#4B5563'} />
@@ -141,7 +135,7 @@ function ExerciseDetails({ exercise, onClose, onUpdate, modalVisible }: Exercise
                 style={[styles.input, styles.textArea, isDark && styles.inputDark]}
                 value={notes}
                 onChangeText={setNotes}
-                placeholder="Add your technique notes here..."
+                placeholder="Add your technique notes..."
                 placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
                 multiline
                 numberOfLines={4}
@@ -150,11 +144,9 @@ function ExerciseDetails({ exercise, onClose, onUpdate, modalVisible }: Exercise
             </View>
           </ScrollView>
 
+          {/* footer */}
           <View style={[styles.footer, isDark && styles.footerDark]}>
-            <TouchableOpacity
-              onPress={onClose}
-              style={[styles.button, styles.cancelButton, isDark && styles.cancelButtonDark]}
-            >
+            <TouchableOpacity onPress={onClose} style={[styles.button, styles.cancelButton, isDark && styles.cancelButtonDark]}>
               <Text style={[styles.cancelButtonText, isDark && styles.cancelButtonTextDark]}>
                 Cancel
               </Text>
@@ -163,30 +155,26 @@ function ExerciseDetails({ exercise, onClose, onUpdate, modalVisible }: Exercise
               <Text style={styles.saveButtonText}>Save Changes</Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
-  );
+  )
 }
+
 
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF',
     borderRadius: 12,
     width: '90%',
-    maxWidth: 500,
     maxHeight: '90%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    paddingBottom: 8,
   },
   modalContentDark: {
     backgroundColor: '#1F2937',
@@ -356,4 +344,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export { ExerciseDetails };
+//export { ExerciseDetails };

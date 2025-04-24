@@ -4,12 +4,14 @@ import { Home as HomeIcon, Settings as SettingsIcon } from 'lucide-react-native'
 import { useTheme } from '@/src/context/ThemeContext'
 import { ThemeToggle } from '@/src/components/ThemeToggle'
 import { View, StyleSheet } from 'react-native'
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export default function TabLayout() {
   const { isDark } = useTheme()
 
   return (
-    <Tabs
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <Tabs
       screenOptions={{
         headerShown: true,
         headerStyle: { backgroundColor: isDark ? '#1F2937' : '#FFF' },
@@ -36,6 +38,7 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+    </GestureHandlerRootView>
   )
 }
 

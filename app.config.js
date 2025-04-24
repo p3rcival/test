@@ -33,7 +33,7 @@ export default ({ config }) => ({
       "WRITE_EXTERNAL_STORAGE",
       "INTERNET"
     ],
-    softwareKeyboardLayoutMode: "pan",
+    softwareKeyboardLayoutMode: "resize",
     allowBackup: true,
     blockedPermissions: [
       "ACCESS_BACKGROUND_LOCATION",

@@ -1,6 +1,8 @@
 // app/(tabs)/index.tsx
 import React, { useState, useEffect, useCallback } from 'react'
 import {
+  TouchableWithoutFeedback,
+  Keyboard,
   SafeAreaView,
   View,
   Text,
@@ -22,11 +24,9 @@ import { Calendar } from '@/src/components/Calendar'
 import { DaySchedule } from '@/src/components/DaySchedule'
 import { ExerciseForm } from '@/src/components/ExerciseForm'
 
-// ─── STYLES ──────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f3f4f6' },
   containerDark: { backgroundColor: '#111827' },
-
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -35,73 +35,43 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
-  headerDark: {
-    backgroundColor: '#1F2937',
-    borderBottomColor: '#374151',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginLeft: 12,
-    fontFamily: 'Inter-Bold',
-    color: '#1F2937',
-  },
+  headerDark: { backgroundColor: '#1F2937', borderBottomColor: '#374151' },
+  title: { fontSize: 20, fontWeight: 'bold', marginLeft: 12, color: '#1F2937' },
   titleDark: { color: '#FFFFFF' },
-
   section: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
     marginVertical: 8,
     marginHorizontal: 16,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41,
-    elevation: 2,
+    backgroundColor: '#fff',
+    borderRadius: 8,
   },
-  sectionDark: { backgroundColor: '#1F2937', shadowColor: '#000' },
-
+  sectionDark: { backgroundColor: '#1F2937' },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 16,
-    fontFamily: 'Inter-Bold',
     color: '#1F2937',
   },
   sectionTitleDark: { color: '#FFFFFF' },
-
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#666',
-    fontFamily: 'Inter-Regular',
-  },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  loadingText: { fontSize: 16, color: '#666' },
   loadingTextDark: { color: '#9CA3AF' },
 })
-// ────────────────────────────────────────────────────────────────────────────────
 
 export default function Home() {
   const { isDark } = useTheme()
 
-  // selected date & schedule
+  // state
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()))
-  const [workoutSchedule, setWorkoutSchedule] = useState<Record<string, any>>({})
+  const [workoutSchedule, setWorkoutSchedule] = useState<
+    Record<string, { date: string; exercises: Exercise[] }>
+  >({})
   const [isLoading, setIsLoading] = useState(true)
-
-  // restore user state
   const [user, setUser] = useState<User | null>(null)
 
-  // helper: past vs future
-  const isPastDate = (date: Date) =>
-    differenceInCalendarDays(date, new Date()) < 0
+  const isPastDate = (date: Date) => differenceInCalendarDays(date, new Date()) < 0
 
-  // load workouts
+  // fetch schedules
   async function loadWorkoutSchedules() {
     setIsLoading(true)
     const { data, error } = await supabase.from('workout_schedules').select('*')
@@ -111,13 +81,15 @@ export default function Home() {
       setIsLoading(false)
       return
     }
-    const map: Record<string, any> = {}
-    data.forEach(item => (map[item.date] = item))
+    const map: typeof workoutSchedule = {}
+    data.forEach(item => {
+      map[item.date] = { date: item.date, exercises: item.exercises }
+    })
     setWorkoutSchedule(map)
     setIsLoading(false)
   }
 
-  // fetch on focus/login
+  // on focus / login
   useFocusEffect(
     useCallback(() => {
       async function refresh() {
@@ -126,7 +98,6 @@ export default function Home() {
           error,
         } = await supabase.auth.getSession()
         if (error) console.error(error)
-
         if (session?.user) {
           setUser(session.user)
           loadWorkoutSchedules()
@@ -140,7 +111,7 @@ export default function Home() {
     }, [])
   )
 
-  // reload on auth changes
+  // on auth change
   useEffect(() => {
     const {
       data: { subscription },
@@ -152,34 +123,28 @@ export default function Home() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // date key & that day's schedule
+  // derive today’s schedule
   const dateKey = format(selectedDate, 'yyyy-MM-dd')
-  const daySchedule = workoutSchedule[dateKey] || { date: dateKey, exercises: [] }
+  const daySchedule = workoutSchedule[dateKey] ?? { date: dateKey, exercises: [] }
 
-  // ─── restore handlers with explicit types ───────────────────────────────────
+  // ── Handlers ────────────────────────────────────────────────────────────────
 
   const handleAddExercise = async (exercise: Exercise) => {
     if (!user) {
       Toast.show({ type: 'error', text1: 'Please sign in to save workouts' })
       return
     }
-
     const updatedExercises = [...daySchedule.exercises, exercise]
-
-    // update local
     setWorkoutSchedule(prev => ({
       ...prev,
       [dateKey]: { date: dateKey, exercises: updatedExercises },
     }))
-
-    // persist
     const { error } = await supabase
       .from('workout_schedules')
       .upsert(
         { user_id: user.id, date: dateKey, exercises: updatedExercises },
         { onConflict: 'user_id,date' }
       )
-
     if (error) {
       console.error(error)
       Toast.show({ type: 'error', text1: 'Failed to save workout' })
@@ -192,17 +157,18 @@ export default function Home() {
       return
     }
 
-    const updatedExercises = (daySchedule.exercises as Exercise[]).filter(
+    // remove locally
+    const remaining = (daySchedule.exercises as Exercise[]).filter(
       (e: Exercise) => e.id !== exerciseId
     )
 
-    // update local
-    setWorkoutSchedule(prev => ({
-      ...prev,
-      [dateKey]: { date: dateKey, exercises: updatedExercises },
-    }))
-
-    if (updatedExercises.length === 0) {
+    if (remaining.length === 0) {
+      // delete the whole dateKey
+      setWorkoutSchedule((prev: typeof workoutSchedule) => {
+        const copy = { ...prev }
+        delete copy[dateKey]
+        return copy
+      })
       const { error } = await supabase
         .from('workout_schedules')
         .delete()
@@ -212,10 +178,15 @@ export default function Home() {
         Toast.show({ type: 'error', text1: 'Failed to delete workout' })
       }
     } else {
+      // update that one day
+      setWorkoutSchedule((prev: typeof workoutSchedule) => ({
+        ...prev,
+        [dateKey]: { date: dateKey, exercises: remaining },
+      }))
       const { error } = await supabase
         .from('workout_schedules')
         .upsert(
-          { user_id: user.id, date: dateKey, exercises: updatedExercises },
+          { user_id: user.id, date: dateKey, exercises: remaining },
           { onConflict: 'user_id,date' }
         )
       if (error) {
@@ -225,21 +196,18 @@ export default function Home() {
     }
   }
 
-  const handleUpdateExercise = async (updatedExercise: Exercise) => {
+  const handleUpdateExercise = async (updated: Exercise) => {
     if (!user) {
       Toast.show({ type: 'error', text1: 'Please sign in to modify workouts' })
       return
     }
-
-    const updatedExercises = (daySchedule.exercises as Exercise[]).map(
-      (e: Exercise) => (e.id === updatedExercise.id ? updatedExercise : e)
+    const updatedExercises = (daySchedule.exercises as Exercise[]).map(e =>
+      e.id === updated.id ? updated : e
     )
-
     setWorkoutSchedule(prev => ({
       ...prev,
       [dateKey]: { date: dateKey, exercises: updatedExercises },
     }))
-
     const { error } = await supabase
       .from('workout_schedules')
       .upsert(
@@ -252,7 +220,8 @@ export default function Home() {
     }
   }
 
-  // ─── RENDER ────────────────────────────────────────────────────────────────────
+  // ── Render ───────────────────────────────────────────────────────────────────
+
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <View style={[styles.container, isDark && styles.containerDark]}>
@@ -264,50 +233,47 @@ export default function Home() {
           </Text>
         </View>
 
-        {/* SCROLLABLE CONTENT + FORM */}
+        {/* CONTENT */}
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === 'android' ? 'height' : 'padding'}
           keyboardVerticalOffset={16}
         >
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{
-              paddingTop: 16,
-              paddingBottom: 120, // prevents form from hiding under tabs
-            }}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* DAY SCHEDULE */}
-            <View style={[styles.section, isDark && styles.sectionDark]}>
-              <DaySchedule
-                date={selectedDate}
-                exercises={daySchedule.exercises}
-                onRemoveExercise={handleRemoveExercise}
-                onUpdateExercise={handleUpdateExercise}
-              />
-            </View>
-
-            {/* CALENDAR */}
-            <View style={[styles.section, isDark && styles.sectionDark]}>
-              <Calendar
-                selectedDate={selectedDate}
-                workoutSchedule={workoutSchedule}
-                onSelectDate={setSelectedDate}
-              />
-            </View>
-
-            {/* ADD EXERCISE FORM */}
-            {!isPastDate(selectedDate) && (
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+            <ScrollView
+              contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
+              keyboardShouldPersistTaps="handled"
+            >
+              {/* DAY SCHEDULE */}
               <View style={[styles.section, isDark && styles.sectionDark]}>
-                <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
-                  Add Exercise
-                </Text>
-                <ExerciseForm user={user}
-                onAddExercise={handleAddExercise} />
+                <DaySchedule
+                  date={selectedDate}
+                  exercises={daySchedule.exercises}
+                  onRemoveExercise={handleRemoveExercise}
+                  onUpdateExercise={handleUpdateExercise}
+                />
               </View>
-            )}
-          </ScrollView>
+
+              {/* CALENDAR */}
+              <View style={[styles.section, isDark && styles.sectionDark]}>
+                <Calendar
+                  selectedDate={selectedDate}
+                  workoutSchedule={workoutSchedule}
+                  onSelectDate={setSelectedDate}
+                />
+              </View>
+
+              {/* ADD FORM */}
+              {!isPastDate(selectedDate) && (
+                <View style={[styles.section, isDark && styles.sectionDark]}>
+                  <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+                    Add Exercise
+                  </Text>
+                  <ExerciseForm user={user} onAddExercise={handleAddExercise} />
+                </View>
+              )}
+            </ScrollView>
+          </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
 
         {/* TOAST */}
