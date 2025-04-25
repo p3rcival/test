@@ -52,6 +52,9 @@ export function ExerciseForm({ user, onAddExercise }: ExerciseFormProps) {
   const [showTemplates, setShowTemplates] = useState(false)
   const [isFromTemplate, setIsFromTemplate] = useState(false)
 
+  const [mode, setMode] = useState<'weight'|'duration'>('weight')
+  const [duration, setDuration] = useState<number|undefined>(undefined)
+
   // load saved templates whenever the parent hands us a user
   useEffect(() => {
     if (user) {
@@ -69,6 +72,13 @@ export function ExerciseForm({ user, onAddExercise }: ExerciseFormProps) {
     if (error) {
       console.error('Error loading templates:', error)
       return
+    }
+
+    const newEx: Exercise = {
+      id: uuid.v4() as string,
+      ...exercise,
+      weight: mode==='weight' ? exercise.weight : undefined,
+      duration: mode==='duration' ? duration : undefined
     }
 
     const withUrls: Exercise[] = data.map((tpl: any) => ({
@@ -589,5 +599,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 8,
     fontFamily: 'Inter-Bold',
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  toggleButton: {
+    flex: 1,
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+  },
+  toggleButtonActive: {
+    backgroundColor: '#3B82F6',
+  },
+  toggleText: {
+    textAlign: 'center',
+    color: '#4B5563',
+    fontFamily: 'Inter-Regular',
+  },
+  toggleTextActive: {
+    color: '#FFF',
   },
 })
