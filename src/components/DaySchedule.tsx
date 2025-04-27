@@ -80,6 +80,7 @@ function DaySchedule({ date, exercises, onRemoveExercise, onUpdateExercise }: Da
       {selectedExercise && isFocused && (
         <ExerciseDetails
           exercise={selectedExercise}
+          visible={true}
           onClose={() => setSelectedExercise(null)}
           onUpdate={(updated) => {
             onUpdateExercise(updated);

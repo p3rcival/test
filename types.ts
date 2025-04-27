@@ -3,6 +3,7 @@ export interface Exercise {
   name: string;
   sets: number;
   reps: number;
+  duration?: number   // new: only for time-mode
   weight?: number;
   videoUrls?: string[];
   notes?: string;
