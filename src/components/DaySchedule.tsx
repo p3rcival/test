@@ -78,14 +78,15 @@ function DaySchedule({ date, exercises, onRemoveExercise, onUpdateExercise }: Da
       )}
 
       {selectedExercise && isFocused && (
-        <ExerciseDetails
-          exercise={selectedExercise}
-          onClose={() => setSelectedExercise(null)}
-          onUpdate={(updated) => {
-            onUpdateExercise(updated);
-            setSelectedExercise(null);
-          }}
-        />
+     <ExerciseDetails
+        exercise={selectedExercise!}
+        visible={!!selectedExercise && isFocused}
+        onClose={() => setSelectedExercise(null)}
+        onUpdate={(updated) => {
+          onUpdateExercise(updated);
+          setSelectedExercise(null);
+        }}
+      />
       )}
     </View>
   );
