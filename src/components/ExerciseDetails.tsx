@@ -104,7 +104,7 @@ export function ExerciseDetails({ exercise, visible, onClose, onUpdate }: Exerci
                   {/* Labels for Sets and Seconds */}
                   <View style={styles.row}>
                     <View style={styles.flex1}>
-                      <Text style={[styles.sectionLabel, isDark && styles.sectionLabelDark]}>Sets</Text>
+                      <Text style={[styles.sectionLabel, isDark && styles.setSectionLabelDark]}>Sets</Text>
                     </View>
                     <View style={styles.flex1}>
                       <Text style={[styles.sectionLabel, isDark && styles.sectionLabelDark]}>Seconds</Text>
@@ -113,7 +113,7 @@ export function ExerciseDetails({ exercise, visible, onClose, onUpdate }: Exerci
                   {/* Inputs & Timer */}
                   <View style={styles.row}>
                     <TextInput
-                      style={[styles.input, styles.timeInput, isDark && styles.inputDark, styles.setsNarrow]}
+                      style={[styles.input, styles.timeInput, isDark && styles.inputDark, styles.setsInputDark, styles.setsNarrow]}
                       value={String(sets)}
                       onChangeText={t => setSets(parseInt(t) || 0)}
                       keyboardType="numeric"
@@ -191,34 +191,56 @@ export function ExerciseDetails({ exercise, visible, onClose, onUpdate }: Exerci
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Video size={16} color={isDark ? '#D1D5DB' : '#4B5563'} />
-                <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>Exercise Videos</Text>
+                <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+                  Exercise Videos
+                </Text>
               </View>
+
               {videoUrls.map((url, i) => (
-                <View key={i} style={[styles.videoUrlContainer, isDark && styles.videoUrlContainerDark]}>  
-                  <Text style={[styles.videoUrl, isDark && styles.videoUrlDark]} numberOfLines={1}>{url}</Text>
+                <View
+                  key={i}
+                  style={[styles.videoUrlContainer, isDark && styles.videoUrlContainerDark]}
+                >
+                  <Text
+                    style={[styles.videoUrl, isDark && styles.videoUrlDark]}
+                    numberOfLines={1}
+                  >
+                    {url}
+                  </Text>
                   <View style={styles.videoActions}>
-                    <TouchableOpacity onPress={() => handlePlay(url)} style={styles.playButton}>
+                    <TouchableOpacity
+                      onPress={() => handlePlay(url)}
+                      style={styles.playButton}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
                       <Play size={18} color={isDark ? '#60A5FA' : '#3B82F6'} />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleRemoveVideo(url)} style={styles.removeButton}>
+                    <TouchableOpacity
+                      onPress={() => handleRemoveVideo(url)}
+                      style={styles.removeButton}
+                    >
                       <Trash2 size={18} color="#EF4444" />
                     </TouchableOpacity>
                   </View>
                 </View>
               ))}
 
-             <View style={styles.addVideoContainer}>
-               <TextInput
-                 style={[styles.input, styles.timeInput, styles.flex1, isDark && styles.inputDark]}
-                 value={newVideoUrl}
-                 onChangeText={setNewVideoUrl}
-                 placeholder="https://youtube.com/watch?v=…"
-                 placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
-               />
-               <TouchableOpacity onPress={handleAddVideo} style={styles.addButton}>
-                 <Plus size={18} color="#FFF" />
-               </TouchableOpacity>
-             </View>
+              <View style={styles.addVideoContainer}>
+                <TextInput
+                  style={[styles.input, styles.flex1, isDark && styles.inputDark]}
+                  value={newVideoUrl}
+                  onChangeText={setNewVideoUrl}
+                  placeholder="https://youtube.com/watch?v=…"
+                  placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
+                />
+                <TouchableOpacity
+                  onPress={handleAddVideo}
+                  style={styles.addButton}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Plus size={18} color="#FFF" />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Notes Section */}
@@ -269,12 +291,14 @@ const styles = StyleSheet.create({
   sectionDark: {},
   sectionLabel: { fontSize: 14, fontFamily: 'Inter-Bold', marginBottom: 4, color: '#4B5563' },
   sectionLabelDark: { color: '#D1D5DB' },
+  setSectionLabelDark: { marginLeft: 50, color: '#D1D5DB' },
   row: { flexDirection: 'row', gap: 8 },
   flex1: { flex: 1 },
-  input: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 8, fontSize: 14, color: '#1F2937' },
+  input: { backgroundColor: '#FFF', borderWidth: 1, alignItems: 'center', borderColor: '#D1D5DB', borderRadius: 8, padding: 8, fontSize: 14, color: '#1F2937' },
   timeInput: { height: 48 },
   timerInputFixed: { width: 80, textAlign: 'center'},
   inputDark: { backgroundColor: '#1F2937', borderColor: '#374151', color: '#F3F4F6' },
+  setsInputDark: { textAlign: 'center', borderWidth: 1, alignItems: 'center', borderRadius: 8, padding: 8, fontSize: 14, backgroundColor: '#1F2937', borderColor: '#374151', color: '#F3F4F6' },
   textArea: { height: 100, textAlignVertical: 'top' },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   sectionTitle: { fontSize: 16, marginLeft: 8, fontFamily: 'Inter-Bold', color: '#4B5563' },

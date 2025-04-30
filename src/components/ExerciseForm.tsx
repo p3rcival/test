@@ -253,7 +253,7 @@ export function ExerciseForm({ user, onAddExercise }: ExerciseFormProps) {
 
           {/* Exercise Name */}
           <View style={styles.formGroup}>
-            <Text style={[styles.label, isDark && styles.labelDark]}>Exercise Name</Text>
+            <Text style={[styles.label, isDark && styles.labelDark, styles.leftLabel]}>Exercise Name</Text>
             <TextInput
               style={[styles.input, isDark && styles.inputDark]}
               value={exercise.name}
@@ -264,7 +264,7 @@ export function ExerciseForm({ user, onAddExercise }: ExerciseFormProps) {
           </View>
 
           {/* Sets / Reps ↔ Time / Weight */}
-          <View style={styles.row}>
+          <View style={styles.inputRow}>
             <View style={[styles.formGroup, styles.flex1]}>
               <Text style={[styles.label, isDark && styles.labelDark]}>Sets</Text>
               <TextInput
@@ -334,7 +334,7 @@ export function ExerciseForm({ user, onAddExercise }: ExerciseFormProps) {
           <View style={styles.formGroup}>
             <View style={styles.labelContainer}>
               <Video size={16} color={isDark ? '#D1D5DB' : '#4B5563'} />
-              <Text style={[styles.label, isDark && styles.labelDark]}>Exercise Videos</Text>
+              <Text style={[styles.label, isDark && styles.labelDark, styles.leftLabel]}>Exercise Videos</Text>
             </View>
             {exercise.videoUrls.map((url, i) => (
               <View
@@ -367,7 +367,7 @@ export function ExerciseForm({ user, onAddExercise }: ExerciseFormProps) {
           <View style={styles.formGroup}>
             <View style={styles.labelContainer}>
               <FileText size={16} color={isDark ? '#D1D5DB' : '#4B5563'} />
-              <Text style={[styles.label, isDark && styles.labelDark]}>Technique Notes</Text>
+              <Text style={[styles.label, isDark && styles.labelDark, styles.leftLabel]}>Technique Notes</Text>
             </View>
             <TextInput
               style={[styles.input, styles.textArea, isDark && styles.inputDark]}
@@ -413,8 +413,24 @@ const styles = StyleSheet.create({
   formGroup: { marginBottom: 16 },
   row: { flexDirection: 'row', gap: 12 },
   flex1: { flex: 1 },
+  leftLabel: {
+    textAlign: 'left',
+    alignSelf: 'flex-start',
+    marginLeft: 6,
+    marginTop: 6,
+  },
+  // New styles to align the Sets/Reps/Weight row
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',        // align labels & inputs by their bottom edge
+    justifyContent: 'space-between',
+    marginBottom: 16,              // match your formGroup spacing
+    marginTop: 8,              // add some space above the row
+    gap: 5,
+  },
+  fieldContainer: { flex: 1, alignItems: 'center', },
   labelContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  label: { fontSize: 14, color: '#4B5563', marginBottom: 4, fontFamily: 'Inter-Regular' },
+  label: { fontSize: 14, color: '#4B5563', marginBottom: 8, fontFamily: 'Inter-Regular', textAlign: 'center', },
   labelDark: { color: '#D1D5DB' },
   input: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 12, fontSize: 14, fontFamily: 'Inter-Regular', color: '#1F2937' },
   inputDark: { backgroundColor: '#1F2937', borderColor: '#374151', color: '#F3F4F6' },
