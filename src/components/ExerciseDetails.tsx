@@ -1,4 +1,3 @@
-// src/components/ExerciseDetails.tsx
 import React, { useState, useEffect, useRef } from 'react'
 import {
   Modal,
@@ -15,8 +14,8 @@ import { useTheme } from '@/src/context/ThemeContext'
 import { useRouter } from 'expo-router'
 import extractYoutubeVideoId from '../../utils/extractYoutubeVideoId'
 import { Exercise } from '../types'
-import { Audio } from 'expo-av';
-import alarmSound from '@/assets/sounds/alarm.wav';
+import { Audio } from 'expo-av'
+import alarmSound from '@/assets/sounds/alarm.wav'
 
 interface ExerciseDetailsProps {
   exercise: Exercise
@@ -25,46 +24,59 @@ interface ExerciseDetailsProps {
   onUpdate: (updated: Exercise) => void
 }
 
-export function CountdownTimer({ seconds, onFinish }: { seconds: number; onFinish?: () => void }) {
-  const soundRef = useRef<Audio.Sound | null>(null);
-  const [remaining, setRemaining] = React.useState(seconds);
-
-  useEffect(() => {
-    // load the sound once
-    (async () => {
-      const { sound } = await Audio.Sound.createAsync(alarmSound);
-      soundRef.current = sound;
-      // optional: set volume, loop, etc.
-      await sound.setVolumeAsync(1.0);
-    })();
-
-    return () => {
-      // unload on unmount
-      soundRef.current && soundRef.current.unloadAsync();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (remaining <= 0) {
-      // play the alarm
-      soundRef.current && soundRef.current.replayAsync();
-      onFinish?.();
-      return;
-    }
-    const timerId = setTimeout(() => setRemaining(remaining - 1), 1000);
-    return () => clearTimeout(timerId);
-  }, [remaining]);
-
-  const minutes = Math.floor(remaining / 60);
-  const secs = remaining % 60;
-
-  return (
-    <Text style={{ fontSize: 32 }}>
-      {minutes}:{secs.toString().padStart(2, '0')}
-    </Text>
-  );
+interface CountdownTimerProps {
+  seconds: number
+  running: boolean
+  onFinish?: () => void
+  darkMode: boolean
 }
 
+export function CountdownTimer({ seconds, running, onFinish, darkMode }: CountdownTimerProps) {
+  const soundRef = useRef<Audio.Sound | null>(null)
+  const [remaining, setRemaining] = useState<number>(seconds)
+
+  useEffect(() => {
+    Audio.setAudioModeAsync({ playsInSilentModeIOS: true })
+    ;(async () => {
+      const { sound } = await Audio.Sound.createAsync(alarmSound)
+      soundRef.current = sound
+      await sound.setVolumeAsync(1.0)
+    })()
+    return () => { soundRef.current?.unloadAsync() }
+  }, [])
+
+  useEffect(() => {
+    if (!running) return
+    if (remaining <= 0) {
+      soundRef.current?.replayAsync()
+      onFinish?.()
+      return
+    }
+    const id = setTimeout(() => setRemaining(r => r - 1), 1000)
+    return () => clearTimeout(id)
+  }, [running, remaining])
+
+  useEffect(() => {
+    if (remaining === 0 && seconds > 0) {
+      const to = setTimeout(() => { setRemaining(seconds) }, 1000)
+      return () => clearTimeout(to)
+    }
+  }, [remaining, seconds])
+
+  const minutes = Math.floor(remaining / 60)
+  const secs = remaining % 60
+
+  return (
+    <Text
+      style={[
+        styles.timerValueSmall,
+        darkMode ? styles.timerTextDark : styles.timerText,
+      ]}
+    >
+      {minutes}:{secs.toString().padStart(2, '0')}
+    </Text>
+  )
+}
 
 export function ExerciseDetails({ exercise, visible, onClose, onUpdate }: ExerciseDetailsProps) {
   const { isDark } = useTheme()
@@ -76,31 +88,15 @@ export function ExerciseDetails({ exercise, visible, onClose, onUpdate }: Exerci
   const [reps, setReps] = useState<number>(exercise.reps)
   const [weight, setWeight] = useState<number | undefined>(exercise.weight)
   const [initialDuration] = useState<number>(exercise.duration ?? 0)
-  const [remaining, setRemaining] = useState<number>(exercise.duration ?? 0)
   const [running, setRunning] = useState<boolean>(false)
   const [videoUrls, setVideoUrls] = useState<string[]>(exercise.videoUrls ?? [])
   const [newVideoUrl, setNewVideoUrl] = useState<string>('')
   const [notes, setNotes] = useState<string>(exercise.notes ?? '')
 
-  // Countdown interval
+  // Load/reset remaining when initialDuration changes
   useEffect(() => {
-    let interval: NodeJS.Timeout
-    if (running && remaining > 0) {
-      interval = setInterval(() => setRemaining(r => r - 1), 1000)
-    }
-    return () => clearInterval(interval)
-  }, [running, remaining])
-
-  // Reset timer to initialDuration after reaching zero with a 1s delay
-  useEffect(() => {
-    if (remaining === 0 && initialDuration > 0) {
-      const timeout = setTimeout(() => {
-        setRemaining(initialDuration)
-        setRunning(false)
-      }, 1000)
-      return () => clearTimeout(timeout)
-    }
-  }, [remaining, initialDuration])
+    setRunning(false)
+  }, [initialDuration])
 
   const handleAddVideo = () => {
     if (newVideoUrl && !videoUrls.includes(newVideoUrl)) {
@@ -122,7 +118,7 @@ export function ExerciseDetails({ exercise, visible, onClose, onUpdate }: Exerci
       sets,
       reps: isTimeMode ? exercise.reps : reps,
       weight: isTimeMode ? undefined : weight,
-      duration: isTimeMode ? remaining : undefined,
+      duration: isTimeMode ? initialDuration : undefined,
       videoUrls,
       notes,
     })
@@ -130,8 +126,7 @@ export function ExerciseDetails({ exercise, visible, onClose, onUpdate }: Exerci
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
       <Pressable style={styles.modalOverlay} onPress={onClose}>
-        <Pressable onPress={() => {}} style={[styles.modalContent, isDark && styles.modalContentDark]}>
-          {/* Header */}
+        <Pressable style={[styles.modalContent, isDark && styles.modalContentDark]} onPress={() => {}}>
           <View style={[styles.header, isDark && styles.headerDark]}>
             <Text style={[styles.title, isDark && styles.titleDark]}>{exercise.name}</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
@@ -139,59 +134,39 @@ export function ExerciseDetails({ exercise, visible, onClose, onUpdate }: Exerci
             </TouchableOpacity>
           </View>
 
-          {/* Body */}
           <ScrollView style={styles.content}>
             <View style={[styles.section, isDark && styles.sectionDark]}>
               {isTimeMode ? (
-                <>
-                  {/* Labels for Sets and Seconds */}
-                  <View style={styles.row}>
-                    <View style={styles.flex1}>
-                      <Text style={[styles.sectionLabel, isDark && styles.setSectionLabelDark]}>Sets</Text>
-                    </View>
-                    <View style={styles.flex1}>
-                      <Text style={[styles.sectionLabel, isDark && styles.sectionLabelDark]}>Seconds</Text>
-                    </View>
-                  </View>
-                  {/* Inputs & Timer */}
-                  <View style={styles.row}>
+                <View style={styles.row}>
+                  <View style={[styles.flex1, styles.setsNarrow]}>
+                    <Text style={[styles.sectionLabel, isDark && styles.setSectionLabelDark]}>Sets</Text>
                     <TextInput
-                      style={[styles.input, styles.timeInput, isDark && styles.inputDark, styles.timerInputFixed]}
-                      value={String(remaining)}
-                      onChangeText={t => { setRemaining(parseInt(t) || 0); setRunning(false) }}
+                      style={[styles.input, styles.setsValue, isDark && styles.inputDark]}
+                      value={String(sets)}
+                      onChangeText={(t: string) => setSets(parseInt(t) || 0)}
                       keyboardType="numeric"
                     />
-                    <View style={[styles.timerContainer, styles.timerFlex]}>                  
-                      {/* When running, show non-editable text */}
-                      {running ? (
-                        <Text style={[styles.timerText, isDark && styles.timerTextDark]}> {remaining}s </Text>
-                      ) : (
-                        <TextInput
-                          style={[
-                            styles.input,            // base input styles (light mode)
-                            isDark && styles.inputDark,  // override in dark mode
-                            styles.timeInput,        // your fixed height
-                            styles.timerInputFixed   // your fixed width
-                          ]}
-                          value={String(remaining)}
-                          onChangeText={t => { setRemaining(parseInt(t) || 0); setRunning(false) }}
-                          keyboardType="numeric"
-                        />
-                      )}
+                  </View>
+                  <View style={[styles.flex1, styles.timerFlex]}>
+                    <Text style={[styles.sectionLabel, isDark && styles.sectionLabelDark]}>Seconds</Text>
+                    <View style={styles.timerSection}>
+                      <CountdownTimer
+                        seconds={initialDuration}
+                        running={running}
+                        darkMode={isDark}
+                        onFinish={() => setRunning(false)}
+                      />
                       <TouchableOpacity
                         onPress={() => setRunning(r => !r)}
-                        style={[styles.timerButton, isDark && styles.timerButtonDark, styles.timerButtonSpacing]}
+                        style={[styles.timerButton, isDark && styles.timerButtonDark]}
                       >
-                        <Text style={[styles.timerButtonText, isDark && styles.timerButtonTextDark]}>
-                          {running ? 'Pause' : 'Start'}
-                        </Text>
+                        <Text style={[styles.timerButtonText, isDark && styles.timerButtonTextDark]}> {running ? 'Pause' : 'Start'} </Text>
                       </TouchableOpacity>
                     </View>
                   </View>
-                </>
+                </View>
               ) : (
                 <>
-                  {/* Labels for Sets, Reps, Weight */}
                   <View style={styles.row}>
                     <View style={styles.flex1}>
                       <Text style={[styles.sectionLabel, isDark && styles.sectionLabelDark]}>Sets</Text>
@@ -203,24 +178,23 @@ export function ExerciseDetails({ exercise, visible, onClose, onUpdate }: Exerci
                       <Text style={[styles.sectionLabel, isDark && styles.sectionLabelDark]}>Weight (lb)</Text>
                     </View>
                   </View>
-                  {/* Inputs */}
                   <View style={styles.row}>
                     <TextInput
                       style={[styles.input, isDark && styles.inputDark, styles.flex1]}
                       value={String(sets)}
-                      onChangeText={t => setSets(parseInt(t) || 0)}
+                      onChangeText={(t: string) => setSets(parseInt(t) || 0)}
                       keyboardType="numeric"
                     />
                     <TextInput
                       style={[styles.input, isDark && styles.inputDark, styles.flex1]}
                       value={String(reps)}
-                      onChangeText={t => setReps(parseInt(t) || 0)}
+                      onChangeText={(t: string) => setReps(parseInt(t) || 0)}
                       keyboardType="numeric"
                     />
                     <TextInput
                       style={[styles.input, isDark && styles.inputDark, styles.flex1]}
                       value={weight?.toString() || ''}
-                      onChangeText={t => setWeight(t ? parseFloat(t) : undefined)}
+                      onChangeText={(t: string) => setWeight(t ? parseFloat(t) : undefined)}
                       keyboardType="numeric"
                       placeholder="Optional"
                       placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
@@ -234,40 +208,21 @@ export function ExerciseDetails({ exercise, visible, onClose, onUpdate }: Exerci
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Video size={16} color={isDark ? '#D1D5DB' : '#4B5563'} />
-                <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
-                  Exercise Videos
-                </Text>
+                <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>Exercise Videos</Text>
               </View>
-
               {videoUrls.map((url, i) => (
-                <View
-                  key={i}
-                  style={[styles.videoUrlContainer, isDark && styles.videoUrlContainerDark]}
-                >
-                  <Text
-                    style={[styles.videoUrl, isDark && styles.videoUrlDark]}
-                    numberOfLines={1}
-                  >
-                    {url}
-                  </Text>
+                <View key={i} style={[styles.videoUrlContainer, isDark && styles.videoUrlContainerDark]}>
+                  <Text style={[styles.videoUrl, isDark && styles.videoUrlDark]} numberOfLines={1}>{url}</Text>
                   <View style={styles.videoActions}>
-                    <TouchableOpacity
-                      onPress={() => handlePlay(url)}
-                      style={styles.playButton}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
+                    <TouchableOpacity onPress={() => handlePlay(url)} style={styles.playButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                       <Play size={18} color={isDark ? '#60A5FA' : '#3B82F6'} />
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => handleRemoveVideo(url)}
-                      style={styles.removeButton}
-                    >
+                    <TouchableOpacity onPress={() => handleRemoveVideo(url)} style={styles.removeButton}>
                       <Trash2 size={18} color="#EF4444" />
                     </TouchableOpacity>
                   </View>
                 </View>
               ))}
-
               <View style={styles.addVideoContainer}>
                 <TextInput
                   style={[styles.input, styles.flex1, isDark && styles.inputDark]}
@@ -276,11 +231,7 @@ export function ExerciseDetails({ exercise, visible, onClose, onUpdate }: Exerci
                   placeholder="https://youtube.com/watch?v=…"
                   placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
                 />
-                <TouchableOpacity
-                  onPress={handleAddVideo}
-                  style={styles.addButton}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
+                <TouchableOpacity onPress={handleAddVideo} style={styles.addButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                   <Plus size={18} color="#FFF" />
                 </TouchableOpacity>
               </View>
@@ -303,17 +254,17 @@ export function ExerciseDetails({ exercise, visible, onClose, onUpdate }: Exerci
                 textAlignVertical="top"
               />
             </View>
-          </ScrollView>
 
-          {/* Footer Buttons */}
-          <View style={[styles.footer, isDark && styles.footerDark]}>
-            <TouchableOpacity onPress={onClose} style={[styles.button, styles.cancelButton, isDark && styles.cancelButtonDark]}>
-              <Text style={[styles.cancelButtonText, isDark && styles.cancelButtonTextDark]}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleSubmit} style={[styles.button, styles.saveButton]}>
-              <Text style={styles.saveButtonText}>Save Changes</Text>
-            </TouchableOpacity>
-          </View>
+            {/* Footer Buttons */}
+            <View style={[styles.footer, isDark && styles.footerDark]}>
+              <TouchableOpacity onPress={onClose} style={[styles.button, styles.cancelButton, isDark && styles.cancelButtonDark]}>
+                <Text style={[styles.cancelButtonText, isDark && styles.cancelButtonTextDark]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleSubmit} style={[styles.button, styles.saveButton]}>
+                <Text style={styles.saveButtonText}>Save Changes</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
         </Pressable>
       </Pressable>
     </Modal>
@@ -338,10 +289,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 8 },
   flex1: { flex: 1 },
   input: { backgroundColor: '#FFF', borderWidth: 1, alignItems: 'center', borderColor: '#D1D5DB', borderRadius: 8, padding: 8, fontSize: 14, color: '#1F2937' },
-  timeInput: { height: 48 },
-  timerInputFixed: { width: 80, textAlign: 'center'},
   inputDark: { backgroundColor: '#1F2937', borderColor: '#374151', color: '#F3F4F6' },
-  setsInputDark: { textAlign: 'center', borderWidth: 1, alignItems: 'center', borderRadius: 8, padding: 8, fontSize: 14, backgroundColor: '#1F2937', borderColor: '#374151', color: '#F3F4F6' },
   textArea: { height: 100, textAlignVertical: 'top' },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   sectionTitle: { fontSize: 16, marginLeft: 8, fontFamily: 'Inter-Bold', color: '#4B5563' },
@@ -355,6 +303,8 @@ const styles = StyleSheet.create({
   removeButton: { padding: 4 },
   addVideoContainer: { flexDirection: 'row', gap: 8 },
   addButton: { backgroundColor: '#3B82F6', borderRadius: 8, padding: 12, justifyContent: 'center', alignItems: 'center' },
+  setsValue: { fontSize: 28, textAlign: 'center' },
+  timerValueSmall: { fontSize: 20, textAlign: 'center' },
   timerContainer: { flexDirection: 'row', alignItems: 'center', marginLeft: 24 },
   timerText: { fontSize: 16, fontFamily: 'Inter-Bold', marginRight: 8, color: '#1F2937' },
   timerTextDark: { color: '#F3F4F6' },
@@ -371,16 +321,7 @@ const styles = StyleSheet.create({
   cancelButtonTextDark: { color: '#D1D5DB' },
   saveButton: { backgroundColor: '#3B82F6' },
   saveButtonText: { color: '#FFF', fontFamily: 'Inter-Bold' },
-    // when in time‐mode, make the "Sets" box a bit narrower
-    setsNarrow: {
-      flex: 0.4,
-    },
-    // the timer container now takes the rest of the row
-    timerFlex: {
-      flex: 0.6,
-    },
-    // give the Start/Pause button some breathing room
-    timerButtonSpacing: {
-      marginLeft: 16,
-    },
+  setsNarrow: { flex: 0.4 },
+  timerFlex: { flex: 0.6 },
+  timerSection: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginVertical: 8 },
 })

@@ -1,6 +1,4 @@
 
-
-$destinationPath = "C:\Users\localadmin\Desktop\workout_app4\Backup\"
 $sourcePath = "C:\Users\localadmin\Desktop\workout_app4"
 #$allFiles = Get-ChildItem -Path $sourcePath -Recurse -Include *.tsx, *.js, *.json, *.ts, *.jsx, *.css, *.html | Where-Object {$_.FullName -notmatch "node_modules" -and $_.FullName -notmatch "dist" -and $_.FullName -notmatch "build" -and $_.FullName -notmatch "coverage" -and $_.FullName -notmatch "test"}
 $allFiles | ForEach-Object {
