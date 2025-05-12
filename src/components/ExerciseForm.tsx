@@ -60,6 +60,13 @@ export function ExerciseForm({ user, onAddExercise }: ExerciseFormProps) {
   const router = useRouter()
   const { isDark } = useTheme()
 
+  // how many templates to show before scrolling
+  const MAX_VISIBLE = 5
+  // must match the height of styles.templateItem plus its margin
+  const ITEM_HEIGHT = 56
+
+  const [originalTemplate, setOriginalTemplate] = useState<Exercise | null>(null)
+
   const [mode, setMode] = useState<'reps' | 'time'>('reps')
   const [exercise, setExercise] = useState<FormState>({
     name: '',
@@ -74,6 +81,9 @@ export function ExerciseForm({ user, onAddExercise }: ExerciseFormProps) {
   const [templates, setTemplates] = useState<Exercise[]>([])
   const [showTemplates, setShowTemplates] = useState(false)
   const [isFromTemplate, setIsFromTemplate] = useState(false)
+
+  // calculate the scrollable container’s height
+  const listHeight = Math.min(templates.length, MAX_VISIBLE) * ITEM_HEIGHT
 
   useEffect(() => {
     if (user) loadTemplates()
@@ -128,7 +138,7 @@ export function ExerciseForm({ user, onAddExercise }: ExerciseFormProps) {
 
     const handleSubmit = async () => {
       Keyboard.dismiss();
-  
+
       // 1) Validate name
       if (!exercise.name?.trim()) {
         Toast.show({ type: 'error', text1: 'Exercise Name can’t be empty' });
@@ -154,28 +164,40 @@ export function ExerciseForm({ user, onAddExercise }: ExerciseFormProps) {
       };
   
       if (isFromTemplate) {
-        // UPDATE existing template by id
-        const { error } = await supabase
-          .from('exercise_templates')
-          .update({
-            user_id:    user!.id,
-            name:       exercise.name,
-            sets:       exercise.sets,
-            reps:       mode === 'reps' ? exercise.reps : null,
-            duration:   mode === 'time' ? exercise.duration : null,
-            weight:     exercise.weight ?? null,
-            video_urls: exercise.videoUrls,
-            notes:      exercise.notes,
-          })
-          .eq('id', exercise.id!);
-  
-        if (error) {
-          Toast.show({ type: 'error', text1: 'Error updating template' });
-          console.error(error);
-        } else {
-          Toast.show({ type: 'success', text1: 'Template updated' });
-          loadTemplates();
-        }
+          // Only update the template if the user actually changed something:
+          const tpl = originalTemplate!;
+          const unchanged =
+            tpl.name       === exercise.name       &&
+            tpl.sets       === exercise.sets       &&
+            tpl.reps       === exercise.reps       &&
+            tpl.duration  === exercise.duration   &&
+            tpl.weight    === exercise.weight     &&
+            JSON.stringify(tpl.videoUrls) === JSON.stringify(exercise.videoUrls) &&
+            tpl.notes      === exercise.notes;
+      
+          if (!unchanged) {
+            const { error } = await supabase
+              .from('exercise_templates')
+              .update({
+                user_id:    user!.id,
+                name:       exercise.name,
+                sets:       exercise.sets,
+                reps:       mode === 'reps' ? exercise.reps : tpl.reps,
+                duration:   mode === 'time' ? exercise.duration : tpl.duration,
+                weight:     exercise.weight ?? tpl.weight,
+                video_urls: exercise.videoUrls,
+                notes:      exercise.notes,
+              })
+              .eq('id', exercise.id!);
+      
+            if (error) {
+              Toast.show({ type: 'error', text1: 'Error updating template' });
+              console.error(error);
+            } else {
+              Toast.show({ type: 'success', text1: 'Template updated' });
+              loadTemplates();
+            }
+          }
       } else {
         // INSERT new template (with id)
         const { error } = await supabase
@@ -214,6 +236,7 @@ export function ExerciseForm({ user, onAddExercise }: ExerciseFormProps) {
     
 
   const handleSelectTemplate = (tpl: Exercise) => {
+    setOriginalTemplate(tpl)  // Save the original template for later use
     setExercise({
       id:   tpl.id,
       name: tpl.name,
@@ -270,9 +293,13 @@ export function ExerciseForm({ user, onAddExercise }: ExerciseFormProps) {
           keyboardShouldPersistTaps="handled"
         >
           {/* Show/hide templates */}
-          <View style={styles.header}>
+          {/* 2) Template picker as an absolutely-positioned overlay */}
+          <View style={{ position: 'relative', zIndex: 10, marginBottom: 16 }}>
             <TouchableOpacity
-              onPress={() => setShowTemplates(v => !v)}
+              onPress={() => {
+                Keyboard.dismiss()
+                setShowTemplates(v => !v)
+              }}
               style={[styles.templateButton, isDark && styles.templateButtonDark]}
             >
               <List size={16} color={isDark ? '#D1D5DB' : '#4B5563'} />
@@ -280,36 +307,76 @@ export function ExerciseForm({ user, onAddExercise }: ExerciseFormProps) {
                 {showTemplates ? 'Hide Templates' : 'Show Templates'}
               </Text>
             </TouchableOpacity>
-          </View>
-          {showTemplates && templates.length > 0 && (
-            <View style={[styles.templatesContainer, isDark && styles.templatesContainerDark]}>
-              <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
-                Saved Templates
-              </Text>
-              {templates.map(tpl => (
-                <TouchableOpacity
-                  key={tpl.id}
-                  onPress={() => handleSelectTemplate(tpl)}
-                  style={[styles.templateItem, isDark && styles.templateItemDark]}
-                >
-                  <View>
-                    <Text style={[styles.templateName, isDark && styles.templateNameDark]}>
-                      {tpl.name}
-                    </Text>
-                    <Text style={[styles.templateDetails, isDark && styles.templateDetailsDark]}>
-                      {tpl.sets} sets × {tpl.reps} reps
-                      {tpl.duration != null && ` for ${tpl.duration}s`}
-                      {tpl.weight ? ` @ ${tpl.weight}lb` : ''}
-                    </Text>
-                  </View>
-                  <TouchableOpacity onPress={() => handleDeleteTemplate(tpl.id)} style={styles.deleteButton}>
-                    <Trash2 size={18} color="#EF4444" />
-                  </TouchableOpacity>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
 
+            {showTemplates && templates.length > 0 && (
+              <View
+                style={[
+                  styles.templatesContainer,
+                  isDark && styles.templatesContainerDark,
+                  {
+                    position: 'absolute',
+                    top: 44,            // adjust so it sits just under your button
+                    left: 0,
+                    right: 0,
+                    maxHeight: listHeight,
+                  },
+                ]}
+              >
+                <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+                  Saved Templates
+                </Text>
+
+                <ScrollView
+                  // 1) only scroll if you overflow the cap:
+                  scrollEnabled={templates.length > MAX_VISIBLE}
+                  // 2) disable bounce/overscroll:
+                  bounces={false}
+                  overScrollMode="never"
+                  // 3) allow nested scrolling inside a parent ScrollView:
+                  nestedScrollEnabled
+                  // 4) make sure the inner list always captures your drag:
+                  onStartShouldSetResponder={() => true}
+                  onMoveShouldSetResponderCapture={() => true}
+                  // 5) snap by row height:
+                  pagingEnabled
+                  snapToInterval={ITEM_HEIGHT}
+                  snapToAlignment="start"
+                  // 6) throttle so snapToInterval works smoothly
+                  scrollEventThrottle={16}
+
+                  style={{ maxHeight: listHeight }}
+                  contentContainerStyle={{ paddingBottom: 8 }}
+                >
+                  {templates.map(tpl => (
+                    <TouchableOpacity
+                      key={tpl.id}
+                      onPress={() => handleSelectTemplate(tpl)}
+                      style={[styles.templateItem, isDark && styles.templateItemDark]}
+                    >
+                      <View>
+                        <Text style={[styles.templateName, isDark && styles.templateNameDark]}>
+                          {tpl.name}
+                        </Text>
+                        <Text style={[styles.templateDetails, isDark && styles.templateDetailsDark]}>
+                          {tpl.sets} sets × {tpl.reps} reps
+                          {tpl.duration != null && ` for ${tpl.duration}s`}
+                          {tpl.weight ? ` @ ${tpl.weight}lb` : ''}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => handleDeleteTemplate(tpl.id)}
+                        style={styles.deleteButton}
+                      >
+                        <Trash2 size={18} color="#EF4444" />
+                      </TouchableOpacity>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+          </View>
+  
+            {/* Section title */} 
           {/* Exercise Name */}
           <View style={styles.formGroup}>
             <Text style={[styles.label, isDark && styles.labelDark, styles.leftLabel]}>Exercise Name</Text>
@@ -468,7 +535,7 @@ const styles = StyleSheet.create({
   templatesContainerDark: { backgroundColor: '#374151' },
   sectionTitle: { fontSize: 16, fontWeight: '600', marginBottom: 12, color: '#1F2937', fontFamily: 'Inter-Bold' },
   sectionTitleDark: { color: '#F3F4F6' },
-  templateItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, backgroundColor: '#FFF', borderRadius: 8, marginBottom: 8 },
+  templateItem: { height: 56, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, backgroundColor: '#FFF', borderRadius: 8, marginBottom: 8 },
   templateItemDark: { backgroundColor: '#1F2937' },
   templateName: { fontSize: 16, color: '#1F2937', fontFamily: 'Inter-Bold' },
   templateNameDark: { color: '#F3F4F6' },
