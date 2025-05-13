@@ -292,89 +292,76 @@ export function ExerciseForm({ user, onAddExercise }: ExerciseFormProps) {
           contentContainerStyle={[styles.formContainer, { paddingBottom: 16 }]}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Show/hide templates */}
-          {/* 2) Template picker as an absolutely-positioned overlay */}
-          <View style={{ position: 'relative', zIndex: 10, marginBottom: 16 }}>
-            <TouchableOpacity
-              onPress={() => {
-                Keyboard.dismiss()
-                setShowTemplates(v => !v)
-              }}
-              style={[styles.templateButton, isDark && styles.templateButtonDark]}
-            >
-              <List size={16} color={isDark ? '#D1D5DB' : '#4B5563'} />
-              <Text style={[styles.templateButtonText, isDark && styles.templateButtonTextDark]}>
-                {showTemplates ? 'Hide Templates' : 'Show Templates'}
+    {/* Show/hide templates */}
+<View style={{ position: 'relative', zIndex: 10, marginBottom: 16 }}>
+  <TouchableOpacity
+    onPress={() => {
+      Keyboard.dismiss()
+      setShowTemplates(v => !v)
+    }}
+    style={[styles.templateButton, isDark && styles.templateButtonDark]}
+  >
+    <List size={16} color={isDark ? '#D1D5DB' : '#4B5563'} />
+    <Text style={[styles.templateButtonText, isDark && styles.templateButtonTextDark]}>
+      {showTemplates ? 'Hide Templates' : 'Show Templates'}
+    </Text>
+  </TouchableOpacity>
+
+  {showTemplates && templates.length > 0 && (
+    <View
+      style={[
+        styles.templatesContainer,
+        isDark && styles.templatesContainerDark,
+        {
+          position: 'absolute',
+          top: 44,              // sits just under your button
+          left: 0,
+          right: 0,
+          maxHeight: listHeight,
+        },
+      ]}
+    >
+      <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+        Saved Templates
+      </Text>
+
+      <ScrollView
+        nestedScrollEnabled={true}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={true}
+        scrollEnabled={templates.length > MAX_VISIBLE}
+        style={{ maxHeight: listHeight }}
+        contentContainerStyle={{ paddingVertical: 8 }}
+      >
+        {templates.map(tpl => (
+          <TouchableOpacity
+            key={tpl.id}
+            activeOpacity={0.7}
+            onPress={() => handleSelectTemplate(tpl)}
+            style={[styles.templateItem, isDark && styles.templateItemDark]}
+          >
+            <View>
+              <Text style={[styles.templateName, isDark && styles.templateNameDark]}>
+                {tpl.name}
               </Text>
+              <Text style={[styles.templateDetails, isDark && styles.templateDetailsDark]}>
+                {tpl.sets} sets × {tpl.reps} reps
+                {tpl.duration != null && ` for ${tpl.duration}s`}
+                {tpl.weight ? ` @ ${tpl.weight}lb` : ''}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => handleDeleteTemplate(tpl.id)}
+              style={styles.deleteButton}
+            >
+              <Trash2 size={18} color="#EF4444" />
             </TouchableOpacity>
-
-            {showTemplates && templates.length > 0 && (
-              <View
-                style={[
-                  styles.templatesContainer,
-                  isDark && styles.templatesContainerDark,
-                  {
-                    position: 'absolute',
-                    top: 44,            // adjust so it sits just under your button
-                    left: 0,
-                    right: 0,
-                    maxHeight: listHeight,
-                  },
-                ]}
-              >
-                <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
-                  Saved Templates
-                </Text>
-
-                <ScrollView
-                  // 1) only scroll if you overflow the cap:
-                  scrollEnabled={templates.length > MAX_VISIBLE}
-                  // 2) disable bounce/overscroll:
-                  bounces={false}
-                  overScrollMode="never"
-                  // 3) allow nested scrolling inside a parent ScrollView:
-                  nestedScrollEnabled
-                  // 4) make sure the inner list always captures your drag:
-                  onStartShouldSetResponder={() => true}
-                  onMoveShouldSetResponderCapture={() => true}
-                  // 5) snap by row height:
-                  pagingEnabled
-                  snapToInterval={ITEM_HEIGHT}
-                  snapToAlignment="start"
-                  // 6) throttle so snapToInterval works smoothly
-                  scrollEventThrottle={16}
-
-                  style={{ maxHeight: listHeight }}
-                  contentContainerStyle={{ paddingBottom: 8 }}
-                >
-                  {templates.map(tpl => (
-                    <TouchableOpacity
-                      key={tpl.id}
-                      onPress={() => handleSelectTemplate(tpl)}
-                      style={[styles.templateItem, isDark && styles.templateItemDark]}
-                    >
-                      <View>
-                        <Text style={[styles.templateName, isDark && styles.templateNameDark]}>
-                          {tpl.name}
-                        </Text>
-                        <Text style={[styles.templateDetails, isDark && styles.templateDetailsDark]}>
-                          {tpl.sets} sets × {tpl.reps} reps
-                          {tpl.duration != null && ` for ${tpl.duration}s`}
-                          {tpl.weight ? ` @ ${tpl.weight}lb` : ''}
-                        </Text>
-                      </View>
-                      <TouchableOpacity
-                        onPress={() => handleDeleteTemplate(tpl.id)}
-                        style={styles.deleteButton}
-                      >
-                        <Trash2 size={18} color="#EF4444" />
-                      </TouchableOpacity>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-          </View>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  )}
+</View>
   
             {/* Section title */} 
           {/* Exercise Name */}
