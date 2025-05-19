@@ -16,6 +16,9 @@ import extractYoutubeVideoId from '../../utils/extractYoutubeVideoId'
 import { Exercise } from '../types'
 import { Audio } from 'expo-av'
 import alarmSound from '@/assets/sounds/alarm.wav'
+import { useAlarmSound } from '@/src/context/AlarmSoundContext';
+import { useSetAlarmSound } from '@/src/context/AlarmSoundContext'
+import { useFocusEffect } from '@react-navigation/native' 
 
 interface ExerciseDetailsProps {
   exercise: Exercise
@@ -34,16 +37,22 @@ interface CountdownTimerProps {
 export function CountdownTimer({ seconds, running, onFinish, darkMode }: CountdownTimerProps) {
   const soundRef = useRef<Audio.Sound | null>(null)
   const [remaining, setRemaining] = useState<number>(seconds)
-
+  const { alarmSound } = useAlarmSound();
+  
   useEffect(() => {
-    Audio.setAudioModeAsync({ playsInSilentModeIOS: true })
-    ;(async () => {
-      const { sound } = await Audio.Sound.createAsync(alarmSound)
-      soundRef.current = sound
-      await sound.setVolumeAsync(1.0)
-    })()
-    return () => { soundRef.current?.unloadAsync() }
-  }, [])
+    const loadSound = async () => {
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      const { sound } = await Audio.Sound.createAsync(alarmSound);  // dynamic sound from context
+      soundRef.current = sound;
+      await sound.setVolumeAsync(1.0);
+    };
+
+    loadSound();
+
+    return () => {
+      soundRef.current?.unloadAsync();
+    };
+  }, []);
 
   useEffect(() => {
     if (!running) return
@@ -56,12 +65,12 @@ export function CountdownTimer({ seconds, running, onFinish, darkMode }: Countdo
     return () => clearTimeout(id)
   }, [running, remaining])
 
-  useEffect(() => {
-    if (remaining === 0 && seconds > 0) {
-      const to = setTimeout(() => { setRemaining(seconds) }, 1000)
-      return () => clearTimeout(to)
-    }
-  }, [remaining, seconds])
+  // useEffect(() => {
+  //   if (remaining === 0 && seconds > 0) {
+  //     const to = setTimeout(() => { setRemaining(seconds) }, 1000)
+  //     return () => clearTimeout(to)
+  //   }
+  // }, [remaining, seconds])
 
   const minutes = Math.floor(remaining / 60)
   const secs = remaining % 60

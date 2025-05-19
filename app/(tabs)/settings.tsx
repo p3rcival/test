@@ -1,10 +1,19 @@
 import React, { useState, useEffect, useContext, } from 'react';
-import { View, Text, Switch, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, Switch, StyleSheet, TouchableOpacity, TextInput, Modal, FlatList, Pressable } from 'react-native';
+import * as FileSystem from 'expo-file-system';
+import { Audio } from 'expo-av';
 import { supabase } from '@/lib/supabase';
 import { useTheme } from '@/src/context/ThemeContext';
 import { LogOut, Mail, Lock, LogIn } from 'lucide-react-native';
 import { User } from '@supabase/supabase-js';
 import { StepCounterContext } from '@/src/context/StepCounterContext';
+
+
+const ALARM_SOUNDS = [
+  { name: 'Default', file: require('@/assets/sounds/alarm.wav') },
+  { name: 'Chime', file: require('@/assets/sounds/chime.wav') },
+  { name: 'Bell', file: require('@/assets/sounds/bell.wav') },
+];
 
 export default function Settings() {
   const { enabled, setEnabled } = useContext(StepCounterContext);
@@ -14,6 +23,8 @@ export default function Settings() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedAlarm, setSelectedAlarm] = useState(ALARM_SOUNDS[0]);
 
   useEffect(() => {
     
@@ -24,11 +35,15 @@ export default function Settings() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
-    });
+        setUser(session?.user || null);
+      });
+      return () => subscription.unsubscribe();
+    }, []);
 
-    return () => subscription.unsubscribe();
-  }, []);
+    const playPreview = async (soundFile: any) => {
+      const { sound } = await Audio.Sound.createAsync(soundFile);
+      await sound.playAsync();
+    };
 
   const handleSignIn = async () => {
     try {
@@ -161,6 +176,66 @@ export default function Settings() {
         />
       </View>
 
+      <View>
+      <TouchableOpacity
+        onPress={() => setModalVisible(true)}
+        style={[
+          styles.settingRow,
+          isDark ? styles.settingRowDark : styles.settingRowLight,
+        ]}
+      >
+        <Text style={[styles.settingText, isDark && styles.settingTextDark]}>
+          Select Alarm Sound
+        </Text>
+        <Text style={[styles.selectedOption, isDark && styles.selectedOptionDark]}>
+          {selectedAlarm?.name ?? 'Default'}
+        </Text>
+      </TouchableOpacity>
+
+      <Modal visible={modalVisible} animationType="slide" transparent>
+        <Pressable
+          style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}
+          onPress={() => setModalVisible(false)}
+        >
+          <View style={{
+            backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
+            borderRadius: 12,
+            width: '90%',
+            maxHeight: '60%',
+            padding: 16,
+          }}>
+            <Text style={{
+              fontSize: 18,
+              fontWeight: 'bold',
+              marginBottom: 12,
+              color: isDark ? '#F3F4F6' : '#1F2937'
+            }}>
+              Choose Alarm Sound
+            </Text>
+
+            {ALARM_SOUNDS.map((sound) => (
+              <TouchableOpacity
+                key={sound.name}
+                onPress={() => {
+                  setSelectedAlarm(sound);
+                  playPreview(sound.file);
+                  setModalVisible(false);
+                }}
+                style={{
+                  paddingVertical: 12,
+                  borderBottomWidth: 1,
+                  borderBottomColor: isDark ? '#374151' : '#E5E7EB'
+                }}
+              >
+                <Text style={{ color: isDark ? '#F3F4F6' : '#1F2937', fontSize: 16 }}>
+                  {sound.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
+      </View>
 
     </View>
     
@@ -175,6 +250,37 @@ const styles = StyleSheet.create({
     padding: 16,
     justifyContent: 'center',
     backgroundColor: '#f3f4f6',
+    },
+    settingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  settingRowLight: {
+    backgroundColor: '#F3F4F6',
+  },
+  settingRowDark: {
+    backgroundColor: '#374151',
+  },
+  settingText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#1F2937',
+  },
+  settingTextDark: {
+    color: '#F9FAFB',
+  },
+  selectedOption: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  selectedOptionDark: {
+    color: '#D1D5DB',
   },
     screen: {
     flex: 1,
