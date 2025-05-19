@@ -1,5 +1,5 @@
 // app/(tabs)/index.tsx
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useContext } from 'react'
 import {
   TouchableWithoutFeedback,
   Keyboard,
@@ -19,7 +19,7 @@ import { supabase } from '@/src/lib/supabase'
 import { Dumbbell } from 'lucide-react-native'
 import { User } from '@supabase/supabase-js'
 import { Exercise } from '@/src/types'
-
+import { StepCounterContext } from '@/src/context/StepCounterContext';
 import { Calendar } from '@/src/components/Calendar'
 import { DaySchedule } from '@/src/components/DaySchedule'
 import { ExerciseForm } from '@/src/components/ExerciseForm'
@@ -70,6 +70,8 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null)
 
   const isPastDate = (date: Date) => differenceInCalendarDays(date, new Date()) < 0
+
+  const { steps, enabled } = useContext(StepCounterContext);
 
   // fetch schedules
   async function loadWorkoutSchedules() {
@@ -232,6 +234,16 @@ export default function Home() {
             Workout Scheduler
           </Text>
         </View>
+
+        {/* STEP COUNTER (only when enabled) */}
+        {enabled && (
+          <View style={{ padding: 16, alignItems: 'center' }}>
+            <Text style={{ fontSize: 20, color: isDark ? '#FFF' : '#000' }}>
+              Steps Today: {steps}
+            </Text>
+          </View>
+        )}
+
 
         {/* CONTENT */}
         <KeyboardAvoidingView

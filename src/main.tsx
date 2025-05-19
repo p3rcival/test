@@ -8,6 +8,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import './index.css';
 import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { StepCounterProvider } from './context/StepCounterContext';
 
 // Optionally ignore harmless warnings:
 LogBox.ignoreLogs(['Warning: ...']);
@@ -25,10 +26,12 @@ export default function Root() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-    <ThemeProvider>
-      <App />
-      <Toaster position="top-right" />
-    </ThemeProvider>
+      <ThemeProvider>
+        <StepCounterProvider>
+          <App />
+          <Toaster position="top-right" />
+        </StepCounterProvider>
+      </ThemeProvider>
     </GestureHandlerRootView>
   );
 }

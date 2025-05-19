@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
+import React, { useState, useEffect, useContext, } from 'react';
+import { View, Text, Switch, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { useTheme } from '@/src/context/ThemeContext';
 import { LogOut, Mail, Lock, LogIn } from 'lucide-react-native';
 import { User } from '@supabase/supabase-js';
+import { StepCounterContext } from '@/src/context/StepCounterContext';
 
 export default function Settings() {
+  const { enabled, setEnabled } = useContext(StepCounterContext);
   const { isDark } = useTheme();
   const [user, setUser] = useState<User | null>(null);  
   const [email, setEmail] = useState('');
@@ -143,15 +145,71 @@ export default function Settings() {
           </View>
         </View>
       )}
+
+
+      <View style={[styles.card, isDark && styles.cardDark]}>
+        <Text style={[styles.label, isDark && styles.labelDark]}>
+          Enable Step Counter
+        </Text>
+        <Switch
+          // keep your brand colors:
+          trackColor={{ false: '#767577', true: '#3B82F6' }}
+          thumbColor={enabled ? '#ffffff' : '#ffffff'}
+          ios_backgroundColor="#555"
+          value={enabled}
+          onValueChange={setEnabled}
+        />
+      </View>
+
+
     </View>
+    
   );
 }
+
+
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
+    justifyContent: 'center',
     backgroundColor: '#f3f4f6',
+  },
+    screen: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',  // light gray
+    padding: 16,
+  },
+  screenDark: {
+    backgroundColor: '#1F2937',  // your dark bg
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    // subtle shadow on iOS:
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    // elevation on Android:
+    elevation: 2,
+  },
+  cardDark: {
+    backgroundColor: '#2D313A',
+  },
+  label: {
+    fontSize: 16,
+    color: '#111827',
+  },
+  labelDark: {
+    color: '#E5E7EB',
   },
   containerDark: {
     backgroundColor: '#111827',
