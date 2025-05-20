@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useContext, } from 'react';
-import { View, Text, Switch, StyleSheet, TouchableOpacity, TextInput, Modal, FlatList, Pressable } from 'react-native';
+import { View, Text, Switch, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, FlatList, Pressable, Button } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import { Audio } from 'expo-av';
 import { supabase } from '@/lib/supabase';
 import { useTheme } from '@/src/context/ThemeContext';
 import { LogOut, Mail, Lock, LogIn } from 'lucide-react-native';
-import { User } from '@supabase/supabase-js';
+import { User, SignOut } from '@supabase/supabase-js';
 import { StepCounterContext } from '@/src/context/StepCounterContext';
-
+import { Auth } from '@/src/components/Auth';
 
 const ALARM_SOUNDS = [
   { name: 'Default', file: require('@/assets/sounds/alarm.wav') },
@@ -18,7 +18,9 @@ const ALARM_SOUNDS = [
 export default function Settings() {
   const { enabled, setEnabled } = useContext(StepCounterContext);
   const { isDark } = useTheme();
-  const [user, setUser] = useState<User | null>(null);  
+  const [alarmSound, setAlarmSound] = useState(ALARM_SOUNDS[0]);
+  const [alarmSounds, setAlarmSounds] = useState(ALARM_SOUNDS);
+  const [user, setUser ] = useState<User | null>(null);  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -161,73 +163,83 @@ export default function Settings() {
         </View>
       )}
 
-
-      <View style={[styles.card, isDark && styles.cardDark]}>
+      {/* STEP COUNTER CARD */}
+      <View style={[ styles.card, isDark && styles.cardDark, { marginTop: 24 }  /* ← push this card down */ ]}>
         <Text style={[styles.label, isDark && styles.labelDark]}>
           Enable Step Counter
         </Text>
         <Switch
-          // keep your brand colors:
           trackColor={{ false: '#767577', true: '#3B82F6' }}
-          thumbColor={enabled ? '#ffffff' : '#ffffff'}
+          thumbColor="#FFF"
           ios_backgroundColor="#555"
           value={enabled}
           onValueChange={setEnabled}
         />
       </View>
 
-      <View>
+      {/* ALARM SOUND CARD */}
       <TouchableOpacity
+        style={[styles.card, isDark && styles.cardDark]}
         onPress={() => setModalVisible(true)}
-        style={[
-          styles.settingRow,
-          isDark ? styles.settingRowDark : styles.settingRowLight,
-        ]}
       >
-        <Text style={[styles.settingText, isDark && styles.settingTextDark]}>
+        <Text style={[styles.label, isDark && styles.labelDark]}>
           Select Alarm Sound
         </Text>
-        <Text style={[styles.selectedOption, isDark && styles.selectedOptionDark]}>
+        <Text style={[styles.value, isDark && styles.valueDark]}>
           {selectedAlarm?.name ?? 'Default'}
         </Text>
       </TouchableOpacity>
 
+      {/* ALARM PICKER MODAL */}
       <Modal visible={modalVisible} animationType="slide" transparent>
         <Pressable
-          style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: 'rgba(0,0,0,0.5)',
+          }}
           onPress={() => setModalVisible(false)}
         >
-          <View style={{
-            backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
-            borderRadius: 12,
-            width: '90%',
-            maxHeight: '60%',
-            padding: 16,
-          }}>
-            <Text style={{
-              fontSize: 18,
-              fontWeight: 'bold',
-              marginBottom: 12,
-              color: isDark ? '#F3F4F6' : '#1F2937'
-            }}>
+          <View
+            style={{
+              backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
+              borderRadius: 12,
+              width: '90%',
+              maxHeight: '60%',
+              padding: 16,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: 'bold',
+                marginBottom: 12,
+                color: isDark ? '#F3F4F6' : '#1F2937',
+              }}
+            >
               Choose Alarm Sound
             </Text>
-
             {ALARM_SOUNDS.map((sound) => (
               <TouchableOpacity
                 key={sound.name}
                 onPress={() => {
-                  setSelectedAlarm(sound);
-                  playPreview(sound.file);
-                  setModalVisible(false);
+                  setSelectedAlarm(sound)
+                  playPreview(sound.file)
+                  setModalVisible(false)
                 }}
                 style={{
                   paddingVertical: 12,
                   borderBottomWidth: 1,
-                  borderBottomColor: isDark ? '#374151' : '#E5E7EB'
+                  borderBottomColor: isDark ? '#374151' : '#E5E7EB',
                 }}
               >
-                <Text style={{ color: isDark ? '#F3F4F6' : '#1F2937', fontSize: 16 }}>
+                <Text
+                  style={{
+                    color: isDark ? '#F3F4F6' : '#1F2937',
+                    fontSize: 16,
+                  }}
+                >
                   {sound.name}
                 </Text>
               </TouchableOpacity>
@@ -235,11 +247,9 @@ export default function Settings() {
           </View>
         </Pressable>
       </Modal>
-      </View>
-
     </View>
-    
   );
+
 }
 
 
@@ -248,10 +258,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    justifyContent: 'center',
+    //justifyContent: 'center',
     backgroundColor: '#f3f4f6',
     },
-    settingRow: {
+  settingRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -293,22 +303,23 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
+    marginHorizontal: 16,
+    marginVertical: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    // subtle shadow on iOS:
+    // iOS shadow
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
-    // elevation on Android:
+    // Android elevation
     elevation: 2,
   },
   cardDark: {
-    backgroundColor: '#2D313A',
+    backgroundColor: '#2D313A',  // match your other dark cards
   },
   label: {
     fontSize: 16,
@@ -316,6 +327,13 @@ const styles = StyleSheet.create({
   },
   labelDark: {
     color: '#E5E7EB',
+  },
+    value: {
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  valueDark: {
+    color: '#9CA3AF',
   },
   containerDark: {
     backgroundColor: '#111827',
