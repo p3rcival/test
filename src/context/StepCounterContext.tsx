@@ -1,10 +1,10 @@
 // src/context/StepCounterContext.tsx
-import React, { createContext, useState, useEffect, ReactNode } from 'react';
-import { Pedometer } from 'expo-sensors';
+import React, { createContext, useState, useEffect, useRef, ReactNode } from 'react';
+import AndroidPedometer from 'expo-android-pedometer';      // static import
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const SPEED_THRESHOLD = 5; // meters/sec (~18km/h)
+const SPEED_THRESHOLD = 5; // m/s
 
 interface StepCounterContextValue {
   enabled: boolean;
@@ -21,56 +21,69 @@ export const StepCounterContext = createContext<StepCounterContextValue>({
 export function StepCounterProvider({ children }: { children: ReactNode }) {
   const [enabled, setEnabled] = useState(false);
   const [steps, setSteps] = useState(0);
-  const [speed, setSpeed] = useState(0);
+  const speedRef = useRef(0);
 
+  // 1) Hydrate toggle
   useEffect(() => {
-    // load persisted setting
     AsyncStorage.getItem('stepCounterEnabled').then(v => {
       if (v === 'true') setEnabled(true);
     });
   }, []);
 
+  // 2) Init pedometer once
   useEffect(() => {
-    AsyncStorage.setItem('stepCounterEnabled', enabled.toString());
-    let pedSub: any = null;
-    let locSub: any = null;
+    AndroidPedometer.initialize()
+      .then(ok => console.log('Pedometer initialized:', ok))
+      .catch(e => console.warn('Init failed:', e));
+  }, []);
 
-    async function startTracking() {
-      // ask permissions
-      await Location.requestForegroundPermissionsAsync();
-      // watch speed
-      locSub = await Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.Highest, distanceInterval: 1 },
-        loc => {
-          setSpeed(loc.coords.speed ?? 0);
-        }
-      );
-      // watch steps
-      const isAvailable = await Pedometer.isAvailableAsync();
-      if (isAvailable) {
-        pedSub = Pedometer.watchStepCount(result => {
-          // only count if below threshold
-          if (speed < SPEED_THRESHOLD) {
-            setSteps(prev => prev + result.steps);
+  // 3) Start/stop sensors when enabled changes
+  useEffect(() => {
+    AsyncStorage.setItem('stepCounterEnabled', String(enabled));
+
+    // cast these to any so TS knows .remove() exists
+    let locSub: any = null;
+    let stepSub: any = null;
+
+    async function startSensors() {
+      // a) watch speed
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        locSub = await Location.watchPositionAsync(
+          { accuracy: Location.Accuracy.Highest, distanceInterval: 1 },
+          loc => {
+            speedRef.current = loc.coords.speed ?? 0;
           }
-        });
+        );
       }
+
+      // b) request activity permission
+      const perm = await AndroidPedometer.requestPermissions();
+      console.log('Pedometer permission granted?', perm.granted);
+      if (!perm.granted) return;
+
+      // c) subscribe to steps
+      stepSub = AndroidPedometer.subscribeToChanges((event: any) => {
+        if (speedRef.current < SPEED_THRESHOLD) {
+          setSteps(event.steps);
+        }
+      });
     }
 
     if (enabled) {
       setSteps(0);
-      startTracking();
+      startSensors();
     } else {
-      // clean up
-      pedSub && pedSub.remove();
-      locSub && locSub.remove();
+      setSteps(0);
+      locSub?.remove();
+      stepSub?.remove();
     }
 
     return () => {
-      pedSub && pedSub.remove();
-      locSub && locSub.remove();
+      locSub?.remove();
+      stepSub?.remove();
     };
-  }, [enabled, speed]);
+  }, [enabled]);
 
   return (
     <StepCounterContext.Provider value={{ enabled, setEnabled, steps }}>

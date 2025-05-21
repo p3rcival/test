@@ -17,11 +17,8 @@
       "@/*": ["./*"],
       "~/*": ["./src/*"]
     },
-    "typeRoots": [
-      "./types",
-      "./node_modules/@types"
-    ]
+    "typeRoots": ["src/types", "node_modules/@types"]
   },
-  "include": ["./app", "./src", "./types", "./components", "./utils", "./lib", "./hooks", "./assets", "./sounds"],
+  "include": ["./app", "./src", "./src/types", "./types", "./components", "./utils", "./lib", "./hooks", "./assets", "./sounds", "declarations.d.ts",],
   "exclude": ["node_modules"]
 }

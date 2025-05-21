@@ -31,7 +31,9 @@ export default ({ config }) => ({
       "CAMERA",
       "READ_EXTERNAL_STORAGE",
       "WRITE_EXTERNAL_STORAGE",
-      "INTERNET"
+      "INTERNET",
+      "ACTIVITY_RECOGNITION",
+      "ACCESS_FINE_LOCATION"    // if you still need location for speed-gating
     ],
     softwareKeyboardLayoutMode: "resize",
     allowBackup: true,
@@ -49,6 +51,10 @@ export default ({ config }) => ({
     bundler: "metro"
   },
   plugins: [
+    "expo-android-pedometer",
+    //"expo-activity-sensor",
+    "expo-location",
+    //"expo-keep-awake",
     "expo-router",
     [
       "expo-camera",
