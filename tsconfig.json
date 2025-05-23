@@ -8,19 +8,14 @@
       "path": "./tsconfig.node.json"
     }
   ],
-  "compilerOptions": {
-    "typeRoots": ["types", "node_modules/@types"]
-  },
+  "compilerOptions": {},
   "extends": "expo/tsconfig.base",
   "include": [
-    "types",
-    "declarations.d.ts",
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
     "src",
-    "declarations.d.ts",
-    "types/**/*",
+    "declarations.d.ts"
   ]
 }

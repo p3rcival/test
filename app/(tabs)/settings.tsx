@@ -6,17 +6,17 @@ import { supabase } from '@/lib/supabase';
 import { useTheme } from '@/src/context/ThemeContext';
 import { LogOut, Mail, Lock, LogIn } from 'lucide-react-native';
 import { User, SignOut } from '@supabase/supabase-js';
-import { StepCounterContext } from '@/src/context/StepCounterContext';
 import { Auth } from '@/src/components/Auth';
 
 const ALARM_SOUNDS = [
-  { name: 'Default', file: require('@/assets/sounds/alarm.wav') },
-  { name: 'Chime', file: require('@/assets/sounds/chime.wav') },
-  { name: 'Bell', file: require('@/assets/sounds/bell.wav') },
+  { name: 'Default', file: require('@/assets/sounds/classic_beep.wav') },
+  { name: 'Chime', file: require('@/assets/sounds/gentle_melody.wav') },
+  { name: 'Bell', file: require('@/assets/sounds/high_energy_pulse.wav') },
+  { name: 'Nature', file: require('@/assets/sounds/nature_morning.wav') },
+  { name: 'SciFi', file: require('@/assets/sounds/sci_fi_alert.wav') },
 ];
 
 export default function Settings() {
-  const { enabled, setEnabled } = useContext(StepCounterContext);
   const { isDark } = useTheme();
   const [alarmSound, setAlarmSound] = useState(ALARM_SOUNDS[0]);
   const [alarmSounds, setAlarmSounds] = useState(ALARM_SOUNDS);
@@ -162,20 +162,6 @@ export default function Settings() {
           </View>
         </View>
       )}
-
-      {/* STEP COUNTER CARD */}
-      <View style={[ styles.card, isDark && styles.cardDark, { marginTop: 24 }  /* ← push this card down */ ]}>
-        <Text style={[styles.label, isDark && styles.labelDark]}>
-          Enable Step Counter
-        </Text>
-        <Switch
-          trackColor={{ false: '#767577', true: '#3B82F6' }}
-          thumbColor="#FFF"
-          ios_backgroundColor="#555"
-          value={enabled}
-          onValueChange={setEnabled}
-        />
-      </View>
 
       {/* ALARM SOUND CARD */}
       <TouchableOpacity

@@ -5,14 +5,12 @@ import { useTheme } from '@/src/context/ThemeContext'
 import { ThemeToggle } from '@/src/components/ThemeToggle'
 import { View, StyleSheet } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StepCounterProvider } from '@/src/context/StepCounterContext'
 
 export default function TabLayout() {
   const { isDark } = useTheme()
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <StepCounterProvider>
         <Tabs
         screenOptions={{
           headerShown: true,
@@ -40,7 +38,6 @@ export default function TabLayout() {
           }}
         />
       </Tabs>
-      </StepCounterProvider>
     </GestureHandlerRootView>
   )
 }
