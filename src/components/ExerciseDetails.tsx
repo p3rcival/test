@@ -27,6 +27,10 @@ interface ExerciseDetailsProps {
   onUpdate: (updated: Exercise) => void
 }
 
+import { fetchTodayStepCount } from '@/src/native/healthConnect';
+
+const steps = await fetchTodayStepCount();
+
 interface CountdownTimerProps {
   seconds: number
   running: boolean
