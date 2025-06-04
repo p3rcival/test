@@ -7,13 +7,18 @@ import { useTheme } from '@/src/context/ThemeContext';
 import { LogOut, Mail, Lock, LogIn } from 'lucide-react-native';
 import { User, SignOut } from '@supabase/supabase-js';
 import { Auth } from '@/src/components/Auth';
+import beep from '@/assets/sounds/classic_beep.wav';
+import melody from '@/assets/sounds/gentle_melody.wav';
+import pulse from '@/assets/sounds/high_energy_pulse.wav';
+import nature from '@/assets/sounds/nature_morning.wav';
+import sciFi from '@/assets/sounds/sci_fi_alert.wav';
 
 const ALARM_SOUNDS = [
-  { name: 'Default', file: require('@/assets/sounds/classic_beep.wav') },
-  { name: 'Chime', file: require('@/assets/sounds/gentle_melody.wav') },
-  { name: 'Bell', file: require('@/assets/sounds/high_energy_pulse.wav') },
-  { name: 'Nature', file: require('@/assets/sounds/nature_morning.wav') },
-  { name: 'SciFi', file: require('@/assets/sounds/sci_fi_alert.wav') },
+  { name: 'Default', file: beep },
+  { name: 'Chime', file: melody },
+  { name: 'Bell', file: pulse },
+  { name: 'Nature', file: nature },
+  { name: 'SciFi', file: sciFi },
 ];
 
 export default function Settings() {
